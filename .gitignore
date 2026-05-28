@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.vite/
+coverage/
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.env
+.agents/
+.claude/
+.codex/
+.playwright/
+.playwright-cli/
+.vscode/
+google-chrome-stable_current_amd64.deb
+IT工單(不可用，僅供參考)/delta_sso_state.json
+IT工單(不可用，僅供參考)/sp_state.json
+AD 群組/build/
+AD 群組/dist/

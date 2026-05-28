@@ -1,0 +1,18 @@
+# 登入憑證與 session（不入版控）
+.env
+delta_sso_state.json
+
+# 輸出檔（不入版控）
+ddp_ticket_maintain.xlsx
+ddp_ticket_maintain_*.xlsx
+delta_tickets_clean.json
+last_seen_id.txt
+run_log.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 本機資料庫
+ddp.db
