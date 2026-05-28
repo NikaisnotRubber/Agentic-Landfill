@@ -1,24 +1,10 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 import { fetchTickets } from "./server/fetchTickets";
+import { createEnrichAdHandler } from "./server/ad/enrichAdRoute";
+import { readBody, sendJson } from "./server/http";
 import { readSampleTickets } from "./server/sampleTickets";
-
-function sendJson(response: ServerResponse, payload: unknown, statusCode = 200) {
-  response.statusCode = statusCode;
-  response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.end(JSON.stringify(payload));
-}
-
-async function readBody(request: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
 
 export default defineConfig({
   plugins: [
@@ -68,6 +54,8 @@ export default defineConfig({
             );
           }
         });
+
+        server.middlewares.use("/api/tickets/enrich-ad", createEnrichAdHandler());
       },
     },
   ],

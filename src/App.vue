@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import { loadLiveTickets, loadSampleTickets } from "./lib/api";
+import { enrichCurrentTickets, loadLiveTickets, loadSampleTickets } from "./lib/api";
+import { canEnrichCurrentTickets } from "./lib/adEnrichment";
 import type { TicketFetchFailure, TicketFetchSuccess } from "./lib/types";
 
 const count = ref(25);
@@ -9,6 +10,7 @@ const technician = ref("");
 const stateFile = ref("IT工單(不可用，僅供參考)/delta_sso_state.json");
 const filterText = ref("");
 const loading = ref(false);
+const enriching = ref(false);
 const result = ref<TicketFetchSuccess | null>(null);
 const failure = ref<TicketFetchFailure | null>(null);
 const rawExpanded = ref(false);
@@ -20,9 +22,32 @@ const visibleTickets = computed(() => {
     return tickets;
   }
 
-  return tickets.filter((ticket) =>
-    Object.values(ticket).some((value) => value.toLowerCase().includes(keyword)),
-  );
+  return tickets.filter((ticket) => {
+    const searchableValues = [
+      ticket.id,
+      ticket.subject,
+      ticket.requester,
+      ticket.technician,
+      ticket.status,
+      ticket.created_time,
+      ticket.site,
+      ticket.category,
+      ticket.group,
+      ticket.short_description,
+      ticket.ad?.adAccount ?? "",
+      ticket.ad?.displayName ?? "",
+      ticket.ad?.mail ?? "",
+      ticket.ad?.department ?? "",
+      ticket.ad?.manager ?? "",
+      ticket.ad?.employeeId ?? "",
+      ticket.ad?.bg ?? "",
+      ticket.ad?.bu ?? "",
+      ticket.ad?.status ?? "",
+      ticket.ad?.error ?? "",
+    ];
+
+    return searchableValues.some((value) => value.toLowerCase().includes(keyword));
+  });
 });
 
 const statusCounts = computed(() => {
@@ -32,6 +57,10 @@ const statusCounts = computed(() => {
   }
   return [...counts.entries()].sort((left, right) => right[1] - left[1]);
 });
+
+const canEnrich = computed(() =>
+  canEnrichCurrentTickets(result.value, loading.value, enriching.value),
+);
 
 async function runSampleFetch() {
   loading.value = true;
@@ -68,6 +97,34 @@ async function runLiveFetch() {
     loading.value = false;
   }
 }
+
+async function runAdEnrichment() {
+  if (!result.value) {
+    return;
+  }
+
+  enriching.value = true;
+  failure.value = null;
+
+  try {
+    const current = result.value;
+    const next = await enrichCurrentTickets({
+      source: current.source,
+      tickets: current.tickets,
+    });
+
+    if (next.ok) {
+      result.value = {
+        ...next,
+        raw: current.raw,
+      };
+    } else {
+      failure.value = next;
+    }
+  } finally {
+    enriching.value = false;
+  }
+}
 </script>
 
 <template>
@@ -101,6 +158,14 @@ async function runLiveFetch() {
           <button type="button" class="secondary" :disabled="loading" @click="runSampleFetch">
             Load Sample
           </button>
+          <button
+            type="button"
+            class="secondary action-wide"
+            :disabled="!canEnrich"
+            @click="runAdEnrichment"
+          >
+            {{ enriching ? "Enriching..." : "Enrich Current Tickets" }}
+          </button>
         </div>
       </div>
     </section>
@@ -127,6 +192,20 @@ async function runLiveFetch() {
         <span class="metric-label">Statuses</span>
         <strong>{{ statusCounts.map(([name, value]) => `${name} ${value}`).join(" · ") }}</strong>
       </div>
+      <div v-if="result.adSummary" class="metric wide">
+        <span class="metric-label">AD Summary</span>
+        <strong>
+          {{
+            [
+              `Enriched ${result.adSummary.enrichedCount}`,
+              `Unique ${result.adSummary.uniqueAccounts}`,
+              `Missing requester ${result.adSummary.missingRequesterCount}`,
+              `Not found ${result.adSummary.notFoundCount}`,
+              `Lookup failed ${result.adSummary.lookupFailedCount}`,
+            ].join(" · ")
+          }}
+        </strong>
+      </div>
     </section>
 
     <section v-if="result" class="table-band">
@@ -135,8 +214,16 @@ async function runLiveFetch() {
           v-model="filterText"
           class="search-input"
           type="search"
-          placeholder="Filter subject, requester, technician, status, site..."
+          placeholder="Filter subject, requester, technician, status, site, AD fields..."
         />
+        <button
+          type="button"
+          class="secondary"
+          :disabled="!canEnrich"
+          @click="runAdEnrichment"
+        >
+          {{ enriching ? "Enriching..." : "Enrich Current Tickets" }}
+        </button>
         <button type="button" class="secondary" @click="rawExpanded = !rawExpanded">
           {{ rawExpanded ? "Hide Raw JSON" : "Show Raw JSON" }}
         </button>
@@ -154,6 +241,10 @@ async function runLiveFetch() {
               <th>Created</th>
               <th>Site</th>
               <th>Category</th>
+              <th>AD Account</th>
+              <th>AD Name</th>
+              <th>Manager</th>
+              <th>BU / BG</th>
             </tr>
           </thead>
           <tbody>
@@ -169,6 +260,15 @@ async function runLiveFetch() {
               <td>{{ ticket.created_time }}</td>
               <td>{{ ticket.site }}</td>
               <td>{{ ticket.category }}</td>
+              <td>{{ ticket.ad?.adAccount ?? "-" }}</td>
+              <td>
+                <strong>{{ ticket.ad?.displayName ?? "-" }}</strong>
+                <p v-if="ticket.ad?.status && ticket.ad.status !== 'enriched'">
+                  {{ ticket.ad.status }}<span v-if="ticket.ad.error"> · {{ ticket.ad.error }}</span>
+                </p>
+              </td>
+              <td>{{ ticket.ad?.manager ?? "-" }}</td>
+              <td>{{ [ticket.ad?.bu, ticket.ad?.bg].filter(Boolean).join(" / ") || "-" }}</td>
             </tr>
           </tbody>
         </table>

@@ -108,6 +108,10 @@ input {
   align-self: end;
 }
 
+.action-wide {
+  grid-column: 1 / -1;
+}
+
 button {
   min-height: 42px;
   padding: 0 16px;
@@ -124,6 +128,11 @@ button.primary {
 button.secondary {
   background: #ede5d7;
   color: #231f1a;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .status-band {
@@ -211,6 +220,12 @@ thead th {
   margin: 0;
   color: #5c554b;
   line-height: 1.45;
+}
+
+td p {
+  margin: 6px 0 0;
+  color: #5c554b;
+  line-height: 1.35;
 }
 
 .raw-json {

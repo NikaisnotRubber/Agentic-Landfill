@@ -9,6 +9,35 @@ export type TicketRecord = {
   status: string;
   group: string;
   short_description: string;
+  ad?: TicketAdInfo;
+};
+
+export type TicketAdStatus =
+  | "enriched"
+  | "missing-requester"
+  | "not-found"
+  | "lookup-failed";
+
+export type TicketAdInfo = {
+  status: TicketAdStatus;
+  adAccount: string;
+  displayName: string;
+  mail: string;
+  department: string;
+  manager: string;
+  employeeId: string;
+  bg: string;
+  bu: string;
+  error?: string;
+};
+
+export type TicketAdEnrichmentSummary = {
+  totalTickets: number;
+  uniqueAccounts: number;
+  enrichedCount: number;
+  missingRequesterCount: number;
+  notFoundCount: number;
+  lookupFailedCount: number;
 };
 
 export type TicketFetchSuccess = {
@@ -17,6 +46,7 @@ export type TicketFetchSuccess = {
   count: number;
   tickets: TicketRecord[];
   raw?: unknown;
+  adSummary?: TicketAdEnrichmentSummary;
 };
 
 export type TicketFetchFailure = {
@@ -34,4 +64,9 @@ export type FetchTicketsOptions = {
   filterId?: string;
   stateFile?: string;
   baseUrl?: string;
+};
+
+export type TicketEnrichmentPayload = {
+  source: TicketFetchSuccess["source"];
+  tickets: TicketRecord[];
 };
