@@ -82,9 +82,10 @@ function normalizeFetchSuccess(
   payload: unknown,
   technician?: string,
 ): TicketFetchSuccess {
-  const requests = Array.isArray((payload as { requests?: unknown[] }).requests)
-    ? (payload as { requests: unknown[] }).requests
-    : [];
+  const requests = (payload as { requests?: unknown[] }).requests as unknown;
+  if (!Array.isArray(requests)) {
+    throw new Error("Helpdesk API response is missing the requests array.");
+  }
 
   const tickets = cleanTicketRecords(requests).filter((ticket) => {
     if (!technician) {

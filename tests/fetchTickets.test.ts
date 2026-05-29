@@ -405,4 +405,27 @@ describe("fetchTickets auth refresh", () => {
     });
     expect(loginAndSaveState).not.toHaveBeenCalled();
   });
+
+  it("returns a failure when a 200 payload is missing the requests array", async () => {
+    const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
+    const executeTicketFetch = vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      json: {
+        response_status: [{ status_code: 2000, status: "success" }],
+      },
+    });
+    const loginAndSaveState = vi.fn();
+
+    const result = await fetchTickets(
+      { count: 1, stateFile: "/tmp/state.json" },
+      { ensureHelpdeskSession, executeTicketFetch, loginAndSaveState },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      source: "live",
+      error: "Helpdesk API response is missing the requests array.",
+    });
+    expect(loginAndSaveState).not.toHaveBeenCalled();
+  });
 });
