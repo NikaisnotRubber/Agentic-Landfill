@@ -45,6 +45,7 @@ describe("ensureHelpdeskSession", () => {
 
     expect(loginAndSaveState).toHaveBeenCalledWith({
       configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
+      stateFile: missingStateFile,
     });
     expect(accessSpy).toHaveBeenNthCalledWith(
       1,
@@ -56,6 +57,36 @@ describe("ensureHelpdeskSession", () => {
       missingStateFile,
       fs.constants.R_OK,
     );
+  });
+
+  it("passes through bootstrap overrides and verifies the requested state file", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "helpdesk-session-"));
+    const missingStateFile = path.join(tempDir, "missing-state.json");
+    const loginAndSaveState = vi.fn().mockImplementation(async () => {
+      await fs.writeFile(
+        missingStateFile,
+        "{\"cookies\":[],\"origins\":[]}\n",
+        "utf8",
+      );
+
+      return {
+        ok: true,
+        stateFile: missingStateFile,
+        baseUrl: "https://runtime.example.com/",
+      };
+    });
+
+    await ensureHelpdeskSession({
+      stateFile: missingStateFile,
+      baseUrl: "https://runtime.example.com/",
+      loginAndSaveState,
+    });
+
+    expect(loginAndSaveState).toHaveBeenCalledWith({
+      configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
+      stateFile: missingStateFile,
+      baseUrl: "https://runtime.example.com/",
+    });
   });
 
   it("rejects when bootstrap returns without creating the requested state file", async () => {
@@ -79,6 +110,7 @@ describe("ensureHelpdeskSession", () => {
 
     expect(loginAndSaveState).toHaveBeenCalledWith({
       configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
+      stateFile: missingStateFile,
     });
     expect(accessSpy).toHaveBeenNthCalledWith(
       1,

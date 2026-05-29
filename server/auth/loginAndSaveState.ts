@@ -15,6 +15,8 @@ type VerifySession = typeof verifyHelpdeskSession;
 
 type LoginAndSaveStateOptions = {
   configPath: string;
+  stateFile?: string;
+  baseUrl?: string;
   loadConfig?: LoadConfig;
   launchBrowser?: LaunchBrowser;
   performLogin?: PerformLogin;
@@ -32,28 +34,33 @@ export async function loginAndSaveState(
   const verifySession = options.verifySession ?? verifyHelpdeskSession;
 
   const config = await loadConfig(options.configPath);
-  const browser = await launchBrowser({ headless: config.headless });
+  const effectiveConfig = {
+    ...config,
+    stateFile: options.stateFile ?? config.stateFile,
+    baseUrl: options.baseUrl ?? config.baseUrl,
+  };
+  const browser = await launchBrowser({ headless: effectiveConfig.headless });
 
   try {
     const context = await browser.newContext();
     try {
       const page = await context.newPage();
-      await performLogin(page, config);
-      await context.storageState({ path: config.stateFile });
+      await performLogin(page, effectiveConfig);
+      await context.storageState({ path: effectiveConfig.stateFile });
     } finally {
       await context.close();
     }
 
     await verifySession({
       browser,
-      stateFile: config.stateFile,
-      baseUrl: config.baseUrl,
+      stateFile: effectiveConfig.stateFile,
+      baseUrl: effectiveConfig.baseUrl,
     });
 
     return {
       ok: true,
-      stateFile: config.stateFile,
-      baseUrl: config.baseUrl,
+      stateFile: effectiveConfig.stateFile,
+      baseUrl: effectiveConfig.baseUrl,
     };
   } finally {
     await browser.close();

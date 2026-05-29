@@ -1,10 +1,11 @@
 import path from "node:path";
 
+import { DEFAULT_HELPDESK_AUTH_CONFIG_PATH } from "./auth/defaultHelpdeskAuthConfigPath";
 import { loginAndSaveState } from "./auth/loginAndSaveState";
 
 function parseArgs(argv: string[]) {
   const args = {
-    configPath: path.resolve(process.cwd(), "config", "helpdesk-auth.local.yaml"),
+    configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
   };
 
   for (let index = 0; index < argv.length; index += 1) {

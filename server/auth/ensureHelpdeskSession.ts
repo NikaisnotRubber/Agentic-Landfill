@@ -5,6 +5,7 @@ import { loginAndSaveState as loginAndSaveStateImpl } from "./loginAndSaveState"
 
 type EnsureHelpdeskSessionOptions = {
   stateFile: string;
+  baseUrl?: string;
   loginAndSaveState?: typeof loginAndSaveStateImpl;
 };
 
@@ -23,9 +24,13 @@ export async function ensureHelpdeskSession(
       "code" in error &&
       (error as NodeJS.ErrnoException).code === "ENOENT"
     ) {
-      await loginAndSaveState({
+      const loginOptions = {
         configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
-      });
+        stateFile: options.stateFile,
+        ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+      };
+
+      await loginAndSaveState(loginOptions);
 
       try {
         await fs.access(options.stateFile, fs.constants.R_OK);

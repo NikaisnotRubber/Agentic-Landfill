@@ -40,6 +40,7 @@ describe("fetchTickets auth refresh", () => {
     expect(ensureHelpdeskSession).toHaveBeenCalledTimes(1);
     expect(ensureHelpdeskSession).toHaveBeenCalledWith({
       stateFile: "/tmp/state.json",
+      baseUrl: "https://ithelpdesk.deltaww.com/WOListView.do",
     });
     expect(loginAndSaveState).not.toHaveBeenCalled();
     expect(executeTicketFetch).toHaveBeenCalledTimes(1);
@@ -102,6 +103,8 @@ describe("fetchTickets auth refresh", () => {
     expect(loginAndSaveState).toHaveBeenCalledTimes(1);
     expect(loginAndSaveState).toHaveBeenCalledWith({
       configPath: expect.stringMatching(/config\/helpdesk-auth\.yaml$/),
+      stateFile: "/tmp/state.json",
+      baseUrl: "https://ithelpdesk.deltaww.com/WOListView.do",
     });
     expect(executeTicketFetch).toHaveBeenCalledTimes(2);
   });
@@ -151,6 +154,53 @@ describe("fetchTickets auth refresh", () => {
       stateFile: "/tmp/refreshed-state.json",
       targetUrl: expect.stringContaining("/api/v3/requests"),
       baseUrl: "https://refreshed.example.com/app",
+    });
+  });
+
+  it("preserves caller-supplied stateFile and baseUrl across bootstrap and refresh", async () => {
+    const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
+    const executeTicketFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        httpStatus: 200,
+        json: {
+          response_status: {
+            status_code: 4000,
+            status: "failed",
+            messages: [{ status_code: 401, message: "AuthToken invalid" }],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        httpStatus: 200,
+        json: {
+          response_status: [{ status_code: 2000, status: "success" }],
+          requests: [],
+        },
+      });
+    const loginAndSaveState = vi.fn().mockResolvedValue({
+      ok: true,
+      stateFile: "/tmp/original-state.json",
+      baseUrl: "https://original.example.com/app",
+    });
+
+    await fetchTickets(
+      {
+        count: 1,
+        stateFile: "/tmp/original-state.json",
+        baseUrl: "https://original.example.com/app",
+      },
+      { ensureHelpdeskSession, executeTicketFetch, loginAndSaveState },
+    );
+
+    expect(ensureHelpdeskSession).toHaveBeenCalledWith({
+      stateFile: "/tmp/original-state.json",
+      baseUrl: "https://original.example.com/app",
+    });
+    expect(loginAndSaveState).toHaveBeenCalledWith({
+      configPath: expect.stringMatching(/config\/helpdesk-auth\.yaml$/),
+      stateFile: "/tmp/original-state.json",
+      baseUrl: "https://original.example.com/app",
     });
   });
 

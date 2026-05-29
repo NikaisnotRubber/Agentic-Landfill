@@ -128,7 +128,7 @@ export async function fetchTickets(
   const loginAndSaveState = deps.loginAndSaveState ?? loginAndSaveStateImpl;
 
   try {
-    await ensureHelpdeskSession({ stateFile });
+    await ensureHelpdeskSession({ stateFile, baseUrl });
 
     const firstPayload = await executeTicketFetch({
       stateFile,
@@ -139,6 +139,8 @@ export async function fetchTickets(
     if (isHelpdeskAuthFailure(firstPayload.json)) {
       const refreshedSession = await loginAndSaveState({
         configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
+        stateFile,
+        baseUrl,
       });
 
       const secondPayload = await executeTicketFetch({
