@@ -1,5 +1,6 @@
 import { chromium, type Browser } from "playwright";
 
+import { resolveBrowserLaunchOptions } from "../browserLaunch";
 import {
   loadHelpdeskAuthConfig,
   type HelpdeskAuthConfig,
@@ -26,7 +27,7 @@ export async function loginAndSaveState(
   const loadConfig = options.loadConfig ?? loadHelpdeskAuthConfig;
   const launchBrowser =
     options.launchBrowser ??
-    ((launchOptions) => chromium.launch(launchOptions));
+    ((launchOptions) => chromium.launch({ ...launchOptions, ...resolveBrowserLaunchOptions() }));
   const performLogin = options.performLogin ?? performHelpdeskLogin;
   const verifySession = options.verifySession ?? verifyHelpdeskSession;
 
