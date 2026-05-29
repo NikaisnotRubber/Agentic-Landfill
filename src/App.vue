@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 
-import { enrichCurrentTickets, loadLiveTickets, loadSampleTickets } from "./lib/api";
-import { canEnrichCurrentTickets } from "./lib/adEnrichment";
+import {
+  enrichCurrentTickets,
+  fetchAndEnrichLiveTickets,
+  loadLiveTickets,
+  loadSampleTickets,
+} from "./lib/api";
+import {
+  canEnrichCurrentTickets,
+  canFetchAndEnrichTickets,
+} from "./lib/adEnrichment";
 import type { TicketFetchFailure, TicketFetchSuccess } from "./lib/types";
 
 const count = ref(25);
@@ -11,8 +19,8 @@ const stateFile = ref("IT工單(不可用，僅供參考)/delta_sso_state.json")
 const filterText = ref("");
 const loading = ref(false);
 const enriching = ref(false);
-const result = ref<TicketFetchSuccess | null>(null);
-const failure = ref<TicketFetchFailure | null>(null);
+const result = shallowRef<TicketFetchSuccess | null>(null);
+const failure = shallowRef<TicketFetchFailure | null>(null);
 const rawExpanded = ref(false);
 
 const visibleTickets = computed(() => {
@@ -61,6 +69,9 @@ const statusCounts = computed(() => {
 const canEnrich = computed(() =>
   canEnrichCurrentTickets(result.value, loading.value, enriching.value),
 );
+const canFetchAndEnrich = computed(() =>
+  canFetchAndEnrichTickets(loading.value, enriching.value),
+);
 
 async function runSampleFetch() {
   loading.value = true;
@@ -83,6 +94,26 @@ async function runLiveFetch() {
   failure.value = null;
   try {
     const next = await loadLiveTickets({
+      count: count.value,
+      technician: technician.value || undefined,
+      stateFile: stateFile.value || undefined,
+    });
+    if (next.ok) {
+      result.value = next;
+    } else {
+      result.value = null;
+      failure.value = next;
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function runFetchAndEnrich() {
+  loading.value = true;
+  failure.value = null;
+  try {
+    const next = await fetchAndEnrichLiveTickets({
       count: count.value,
       technician: technician.value || undefined,
       stateFile: stateFile.value || undefined,
@@ -152,15 +183,33 @@ async function runAdEnrichment() {
           <input v-model="stateFile" type="text" />
         </label>
         <div class="actions">
-          <button type="button" class="primary" :disabled="loading" @click="runLiveFetch">
+          <button
+            type="button"
+            class="primary"
+            :disabled="loading || enriching"
+            @click="runLiveFetch"
+          >
             {{ loading ? "Fetching..." : "Fetch Live" }}
           </button>
-          <button type="button" class="secondary" :disabled="loading" @click="runSampleFetch">
+          <button
+            type="button"
+            class="primary"
+            :disabled="!canFetchAndEnrich"
+            @click="runFetchAndEnrich"
+          >
+            {{ loading ? "Fetching..." : "Fetch + Enrich" }}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            :disabled="loading || enriching"
+            @click="runSampleFetch"
+          >
             Load Sample
           </button>
           <button
             type="button"
-            class="secondary action-wide"
+            class="secondary"
             :disabled="!canEnrich"
             @click="runAdEnrichment"
           >
@@ -173,6 +222,11 @@ async function runAdEnrichment() {
     <section v-if="failure" class="status-band error">
       <strong>Fetch failed.</strong>
       <span>{{ failure.error }}</span>
+    </section>
+
+    <section v-if="result?.adWarning" class="status-band warning">
+      <strong>AD enrichment incomplete.</strong>
+      <span>{{ result.adWarning }}</span>
     </section>
 
     <section v-if="result" class="metrics-band">
