@@ -1,8 +1,10 @@
 import path from "node:path";
-import { existsSync } from "node:fs";
 
 import { chromium } from "playwright";
 
+import { DEFAULT_HELPDESK_AUTH_CONFIG_PATH } from "./auth/defaultHelpdeskAuthConfigPath";
+import { ensureHelpdeskSession as ensureHelpdeskSessionImpl } from "./auth/ensureHelpdeskSession";
+import { loginAndSaveState as loginAndSaveStateImpl } from "./auth/loginAndSaveState";
 import {
   DEFAULT_FILTER_ID,
   HELPDESK_BASE_URL,
@@ -10,7 +12,13 @@ import {
   cleanTicketRecords,
   isHelpdeskAuthFailure,
 } from "./helpdeskApi";
-import type { FetchTicketsOptions, TicketFetchResult } from "./types";
+import { resolveBrowserLaunchOptions } from "./browserLaunch";
+import type {
+  FetchTicketsOptions,
+  TicketFetchFailure,
+  TicketFetchResult,
+  TicketFetchSuccess,
+} from "./types";
 
 const DEFAULT_STATE_FILE = path.resolve(
   process.cwd(),
@@ -18,28 +26,30 @@ const DEFAULT_STATE_FILE = path.resolve(
   "delta_sso_state.json",
 );
 
-function resolveBrowserLaunchOptions() {
-  const configuredPath = process.env.HELPDESK_BROWSER_PATH;
-  if (configuredPath) {
-    return { executablePath: configuredPath };
-  }
+type HelpdeskFetchPayload = {
+  httpStatus: number;
+  json: unknown;
+};
 
-  if (existsSync("/usr/bin/google-chrome")) {
-    return { executablePath: "/usr/bin/google-chrome" };
-  }
+type ExecuteTicketFetch = (options: {
+  stateFile: string;
+  targetUrl: string;
+  baseUrl: string;
+}) => Promise<HelpdeskFetchPayload>;
 
-  return {};
-}
+type FetchTicketsDeps = {
+  ensureHelpdeskSession?: typeof ensureHelpdeskSessionImpl;
+  executeTicketFetch?: ExecuteTicketFetch;
+  loginAndSaveState?: typeof loginAndSaveStateImpl;
+};
 
-export async function fetchTickets(
-  options: FetchTicketsOptions,
-): Promise<TicketFetchResult> {
-  const stateFile = options.stateFile ?? DEFAULT_STATE_FILE;
-  const targetUrl = buildHelpdeskApiUrl({
-    count: options.count,
-    filterId: options.filterId ?? DEFAULT_FILTER_ID,
-  });
-
+async function executeTicketFetchWithBrowser(
+  options: {
+    stateFile: string;
+    targetUrl: string;
+    baseUrl: string;
+  },
+): Promise<HelpdeskFetchPayload> {
   const browser = await chromium.launch({
     headless: true,
     ...resolveBrowserLaunchOptions(),
@@ -47,57 +57,126 @@ export async function fetchTickets(
 
   try {
     const context = await browser.newContext({
-      storageState: stateFile,
+      storageState: options.stateFile,
     });
     const page = await context.newPage();
 
-    await page.goto(options.baseUrl ?? HELPDESK_BASE_URL, {
+    await page.goto(options.baseUrl, {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
 
-    const payload = await page.evaluate(async (url) => {
+    return await page.evaluate(async (url) => {
       const response = await fetch(url, { credentials: "include" });
       return {
         httpStatus: response.status,
         json: await response.json(),
       };
-    }, targetUrl);
+    }, options.targetUrl);
+  } finally {
+    await browser.close();
+  }
+}
 
-    if (isHelpdeskAuthFailure(payload.json)) {
-      return {
-        ok: false,
-        source: "live",
-        error: "Helpdesk session is invalid or expired. Refresh delta_sso_state.json.",
-        details: payload.json,
-      };
+function normalizeFetchSuccess(
+  payload: unknown,
+  technician?: string,
+): TicketFetchSuccess {
+  const requests = (payload as { requests?: unknown[] }).requests as unknown;
+  if (!Array.isArray(requests)) {
+    throw new Error("Helpdesk API response is missing the requests array.");
+  }
+
+  const tickets = cleanTicketRecords(requests).filter((ticket) => {
+    if (!technician) {
+      return true;
     }
+    return ticket.technician.trim() === technician.trim();
+  });
 
-    const requests = Array.isArray((payload.json as { requests?: unknown[] }).requests)
-      ? ((payload.json as { requests: unknown[] }).requests)
-      : [];
+  return {
+    ok: true,
+    source: "live",
+    count: tickets.length,
+    tickets,
+    raw: payload,
+  };
+}
 
-    const tickets = cleanTicketRecords(requests).filter((ticket) => {
-      if (!options.technician) {
-        return true;
-      }
-      return ticket.technician.trim() === options.technician.trim();
+function normalizeHttpFailure(payload: HelpdeskFetchPayload): TicketFetchFailure {
+  return {
+    ok: false,
+    source: "live",
+    error: `Helpdesk API request failed with HTTP ${payload.httpStatus}.`,
+    details: payload.json,
+  };
+}
+
+export async function fetchTickets(
+  options: FetchTicketsOptions,
+  deps: FetchTicketsDeps = {},
+): Promise<TicketFetchResult> {
+  const stateFile = options.stateFile ?? DEFAULT_STATE_FILE;
+  const targetUrl = buildHelpdeskApiUrl({
+    count: options.count,
+    filterId: options.filterId ?? DEFAULT_FILTER_ID,
+  });
+  const baseUrl = options.baseUrl ?? HELPDESK_BASE_URL;
+  const ensureHelpdeskSession =
+    deps.ensureHelpdeskSession ?? ensureHelpdeskSessionImpl;
+  const executeTicketFetch =
+    deps.executeTicketFetch ?? executeTicketFetchWithBrowser;
+  const loginAndSaveState = deps.loginAndSaveState ?? loginAndSaveStateImpl;
+
+  try {
+    await ensureHelpdeskSession({ stateFile, baseUrl });
+
+    const firstPayload = await executeTicketFetch({
+      stateFile,
+      targetUrl,
+      baseUrl,
     });
 
-    return {
-      ok: true,
-      source: "live",
-      count: tickets.length,
-      tickets,
-      raw: payload.json,
-    };
+    if (isHelpdeskAuthFailure(firstPayload.json)) {
+      const refreshedSession = await loginAndSaveState({
+        configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
+        stateFile,
+        baseUrl,
+      });
+
+      const secondPayload = await executeTicketFetch({
+        stateFile: refreshedSession.stateFile,
+        targetUrl,
+        baseUrl: refreshedSession.baseUrl,
+      });
+
+      if (isHelpdeskAuthFailure(secondPayload.json)) {
+        return {
+          ok: false,
+          source: "live",
+          error:
+            "Helpdesk session refresh succeeded but API still reports unauthorized access.",
+          details: secondPayload.json,
+        };
+      }
+
+      if (secondPayload.httpStatus >= 400) {
+        return normalizeHttpFailure(secondPayload);
+      }
+
+      return normalizeFetchSuccess(secondPayload.json, options.technician);
+    }
+
+    if (firstPayload.httpStatus >= 400) {
+      return normalizeHttpFailure(firstPayload);
+    }
+
+    return normalizeFetchSuccess(firstPayload.json, options.technician);
   } catch (error) {
     return {
       ok: false,
       source: "live",
       error: error instanceof Error ? error.message : "Unknown fetch failure",
     };
-  } finally {
-    await browser.close();
   }
 }

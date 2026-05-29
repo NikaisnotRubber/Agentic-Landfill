@@ -4,13 +4,15 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "fetch:tickets": "tsx server/fetchTicketsCli.ts"
+    "fetch:tickets": "tsx server/fetchTicketsCli.ts",
+    "auth:login": "tsx server/helpdeskLoginCli.ts"
   },
   "dependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260521.1",
     "ldapts": "^8.1.8",
     "playwright": "^1.60.0",
-    "vue": "^3.5.34"
+    "vue": "^3.5.34",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",

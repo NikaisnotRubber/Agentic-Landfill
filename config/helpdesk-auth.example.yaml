@@ -1,0 +1,6 @@
+baseUrl: https://ithelpdesk.deltaww.com/
+username: YOUR_ACCOUNT
+password: YOUR_PASSWORD
+domain: DELTA
+stateFile: IT工單(不可用，僅供參考)/delta_sso_state.json
+headless: false

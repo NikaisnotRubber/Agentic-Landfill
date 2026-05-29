@@ -6,8 +6,9 @@ import type { TicketFetchSuccess } from "./types";
 
 const SAMPLE_PATH = path.resolve(
   process.cwd(),
-  "IT工單(不可用，僅供參考)",
-  "delta_tickets_clean.json",
+  "tests",
+  "fixtures",
+  "helpdesk-sample-tickets.json",
 );
 
 export async function readSampleTickets(): Promise<TicketFetchSuccess> {
