@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
-import path from "node:path";
 
+import { DEFAULT_HELPDESK_AUTH_CONFIG_PATH } from "../../server/auth/defaultHelpdeskAuthConfigPath";
 import { loginAndSaveState } from "../../server/auth/loginAndSaveState";
 
 async function main() {
-  const configPath = path.resolve(process.cwd(), "config", "helpdesk-auth.local.yaml");
+  const configPath = DEFAULT_HELPDESK_AUTH_CONFIG_PATH;
 
   if (!existsSync(configPath)) {
     process.stderr.write(
