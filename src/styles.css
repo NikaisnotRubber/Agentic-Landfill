@@ -146,6 +146,12 @@ button:disabled {
   color: #79261a;
 }
 
+.status-band.warning {
+  border-color: rgba(150, 109, 24, 0.26);
+  background: rgba(255, 248, 227, 0.9);
+  color: #6a4d08;
+}
+
 .metrics-band {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

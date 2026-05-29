@@ -12,6 +12,7 @@ import {
   cleanTicketRecords,
   isHelpdeskAuthFailure,
 } from "./helpdeskApi";
+import { filterTicketsForDdp } from "./helpdeskFilters";
 import { resolveBrowserLaunchOptions } from "./browserLaunch";
 import type {
   FetchTicketsOptions,
@@ -42,6 +43,12 @@ type FetchTicketsDeps = {
   executeTicketFetch?: ExecuteTicketFetch;
   loginAndSaveState?: typeof loginAndSaveStateImpl;
 };
+
+function shouldRefreshAuth(payload: HelpdeskFetchPayload): boolean {
+  return payload.httpStatus === 401
+    || payload.httpStatus === 403
+    || isHelpdeskAuthFailure(payload.json);
+}
 
 async function executeTicketFetchWithBrowser(
   options: {
@@ -87,12 +94,16 @@ function normalizeFetchSuccess(
     throw new Error("Helpdesk API response is missing the requests array.");
   }
 
-  const tickets = cleanTicketRecords(requests).filter((ticket) => {
-    if (!technician) {
-      return true;
-    }
-    return ticket.technician.trim() === technician.trim();
-  });
+  const technicianName = technician?.trim();
+
+  const tickets = filterTicketsForDdp(cleanTicketRecords(requests)).filter(
+    (ticket) => {
+      if (!technicianName) {
+        return true;
+      }
+      return ticket.technician.trim() === technicianName;
+    },
+  );
 
   return {
     ok: true,
@@ -137,7 +148,7 @@ export async function fetchTickets(
       baseUrl,
     });
 
-    if (isHelpdeskAuthFailure(firstPayload.json)) {
+    if (shouldRefreshAuth(firstPayload)) {
       const refreshedSession = await loginAndSaveState({
         configPath: DEFAULT_HELPDESK_AUTH_CONFIG_PATH,
         stateFile,
@@ -150,7 +161,7 @@ export async function fetchTickets(
         baseUrl: refreshedSession.baseUrl,
       });
 
-      if (isHelpdeskAuthFailure(secondPayload.json)) {
+      if (shouldRefreshAuth(secondPayload)) {
         return {
           ok: false,
           source: "live",

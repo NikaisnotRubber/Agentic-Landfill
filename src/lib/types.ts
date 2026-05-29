@@ -41,6 +41,7 @@ export type TicketFetchSuccess = {
   tickets: TicketRecord[];
   raw?: unknown;
   adSummary?: TicketAdEnrichmentSummary;
+  adWarning?: string;
 };
 
 export type TicketFetchFailure = {
