@@ -12,7 +12,7 @@ describe("fetchTickets auth refresh", () => {
         requests: [
           {
             id: "817742",
-            subject: "Software install",
+            subject: "DDP software install",
             technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
           },
         ],
@@ -32,7 +32,7 @@ describe("fetchTickets auth refresh", () => {
       tickets: [
         {
           id: "817742",
-          subject: "Software install",
+          subject: "DDP software install",
           technician: "ALVIS.MC.TSAO 曹閔丞",
         },
       ],
@@ -49,6 +49,48 @@ describe("fetchTickets auth refresh", () => {
       targetUrl: expect.stringContaining("/api/v3/requests"),
       baseUrl: "https://ithelpdesk.deltaww.com/WOListView.do",
     });
+  });
+
+  it("keeps only DDP-subject tickets after a successful live fetch", async () => {
+    const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
+    const executeTicketFetch = vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      json: {
+        response_status: [{ status_code: 2000, status: "success" }],
+        requests: [
+          {
+            id: "817742",
+            subject: "DDP laptop replacement",
+            technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
+          },
+          {
+            id: "817743",
+            subject: "Printer setup",
+            technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
+          },
+        ],
+      },
+    });
+    const loginAndSaveState = vi.fn();
+
+    const result = await fetchTickets(
+      { count: 2, stateFile: "/tmp/state.json" },
+      { ensureHelpdeskSession, executeTicketFetch, loginAndSaveState },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      source: "live",
+      count: 1,
+      tickets: [
+        {
+          id: "817742",
+          subject: "DDP laptop replacement",
+          technician: "ALVIS.MC.TSAO 曹閔丞",
+        },
+      ],
+    });
+    expect(loginAndSaveState).not.toHaveBeenCalled();
   });
 
   it("refreshes login once and retries when the first API response is an auth failure", async () => {
@@ -70,11 +112,11 @@ describe("fetchTickets auth refresh", () => {
         json: {
           response_status: [{ status_code: 2000, status: "success" }],
           requests: [
-            {
-              id: "817742",
-              subject: "Recovered ticket",
-              technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
-            },
+          {
+            id: "817742",
+            subject: "DDP recovered ticket",
+            technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
+          },
           ],
         },
       });
@@ -96,7 +138,7 @@ describe("fetchTickets auth refresh", () => {
       tickets: [
         {
           id: "817742",
-          subject: "Recovered ticket",
+          subject: "DDP recovered ticket",
         },
       ],
     });
@@ -156,6 +198,53 @@ describe("fetchTickets auth refresh", () => {
       baseUrl: "https://refreshed.example.com/app",
     });
   });
+
+  it.each([401, 403])(
+    "refreshes login when the first API response is HTTP %i without the auth-failure payload shape",
+    async (httpStatus) => {
+      const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
+      const executeTicketFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          httpStatus,
+          json: {
+            message: "Unauthorized",
+          },
+        })
+        .mockResolvedValueOnce({
+          httpStatus: 200,
+          json: {
+            response_status: [{ status_code: 2000, status: "success" }],
+            requests: [
+              {
+                id: "817744",
+                subject: "DDP access restored",
+                technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
+              },
+            ],
+          },
+        });
+      const loginAndSaveState = vi.fn().mockResolvedValue({
+        ok: true,
+        stateFile: "/tmp/state.json",
+        baseUrl: "https://ithelpdesk.deltaww.com/",
+      });
+
+      const result = await fetchTickets(
+        { count: 1, stateFile: "/tmp/state.json" },
+        { ensureHelpdeskSession, executeTicketFetch, loginAndSaveState },
+      );
+
+      expect(result).toMatchObject({
+        ok: true,
+        source: "live",
+        count: 1,
+        tickets: [{ id: "817744", subject: "DDP access restored" }],
+      });
+      expect(loginAndSaveState).toHaveBeenCalledTimes(1);
+      expect(executeTicketFetch).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it("preserves caller-supplied stateFile and baseUrl across bootstrap and refresh", async () => {
     const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
@@ -259,7 +348,7 @@ describe("fetchTickets auth refresh", () => {
           requests: [
             {
               id: "1",
-              subject: "Keep me",
+              subject: "DDP keep me",
               technician: { name: " ALVIS.MC.TSAO 曹閔丞 " },
             },
             {
@@ -289,7 +378,49 @@ describe("fetchTickets auth refresh", () => {
       ok: true,
       source: "live",
       count: 1,
-      tickets: [{ id: "1", subject: "Keep me" }],
+      tickets: [{ id: "1", subject: "DDP keep me" }],
+    });
+  });
+
+  it("treats whitespace-only technician input as no technician filter", async () => {
+    const ensureHelpdeskSession = vi.fn().mockResolvedValue(undefined);
+    const executeTicketFetch = vi.fn().mockResolvedValue({
+      httpStatus: 200,
+      json: {
+        response_status: [{ status_code: 2000, status: "success" }],
+        requests: [
+          {
+            id: "1",
+            subject: "DDP keep me",
+            technician: { name: "ALVIS.MC.TSAO 曹閔丞" },
+          },
+          {
+            id: "2",
+            subject: "DDP keep me too",
+            technician: { name: "OTHER TECH" },
+          },
+        ],
+      },
+    });
+    const loginAndSaveState = vi.fn();
+
+    const result = await fetchTickets(
+      {
+        count: 2,
+        stateFile: "/tmp/state.json",
+        technician: "   ",
+      },
+      { ensureHelpdeskSession, executeTicketFetch, loginAndSaveState },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      source: "live",
+      count: 2,
+      tickets: [
+        { id: "1", subject: "DDP keep me" },
+        { id: "2", subject: "DDP keep me too" },
+      ],
     });
   });
 
