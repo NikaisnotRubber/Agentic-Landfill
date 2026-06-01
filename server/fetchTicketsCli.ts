@@ -1,4 +1,4 @@
-import { fetchTickets } from "./fetchTickets";
+import { fetchProcessAndEnrich } from "./fetchProcessAndEnrich";
 
 function parseArgs(argv: string[]) {
   const args = {
@@ -32,12 +32,15 @@ function parseArgs(argv: string[]) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const result = await fetchTickets({
-    count: args.count,
-    technician: args.technician || undefined,
-    filterId: args.filterId || undefined,
-    stateFile: args.stateFile || undefined,
-  });
+  const result = await fetchProcessAndEnrich(
+    {
+      count: args.count,
+      technician: args.technician || undefined,
+      filterId: args.filterId || undefined,
+      stateFile: args.stateFile || undefined,
+    },
+    { persistTracker: true, enrich: false },
+  );
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   if (!result.ok) {

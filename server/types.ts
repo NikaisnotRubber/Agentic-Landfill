@@ -1,3 +1,5 @@
+import type { ProcessedDdpRow, ProcessedDdpSummary } from "./ddp/types";
+
 export type TicketRecord = {
   id: string;
   subject: string;
@@ -48,6 +50,8 @@ export type TicketFetchSuccess = {
   raw?: unknown;
   adSummary?: TicketAdEnrichmentSummary;
   adWarning?: string;
+  processedRows?: ProcessedDdpRow[];
+  processedSummary?: ProcessedDdpSummary;
 };
 
 export type TicketFetchFailure = {

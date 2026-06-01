@@ -113,7 +113,7 @@ describe("fetchAndEnrichTickets", () => {
     expect(createLookupClient).not.toHaveBeenCalled();
   });
 
-  it("returns the fetched success unchanged when no tickets are returned", async () => {
+  it("returns processed metadata without AD lookup when no tickets are returned", async () => {
     const fetched = createFetchedSuccess({ count: 0, tickets: [] });
     const createLookupClient = vi.fn();
 
@@ -126,7 +126,15 @@ describe("fetchAndEnrichTickets", () => {
       },
     );
 
-    expect(result).toBe(fetched);
+    expect(result).toEqual({
+      ...fetched,
+      processedRows: [],
+      processedSummary: {
+        totalRows: 0,
+        abnormalRowCount: 0,
+        newTicketCount: 0,
+      },
+    });
     expect(createLookupClient).not.toHaveBeenCalled();
   });
 

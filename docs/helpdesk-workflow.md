@@ -40,6 +40,13 @@ This writes a verified Playwright storage-state file to the configured `stateFil
 - Enriches the currently loaded tickets
 - Useful when you want to fetch first and enrich later
 
+### Processed DDP View
+
+- Available after `Fetch Live`, `Load Sample`, or `Fetch + Enrich`
+- Shows parsed fields derived from `short_description`
+- Highlights newly observed tickets and abnormal rows
+- Use the `Raw Tickets` / `Processed DDP View` toggle in the table area
+
 ## CLI fetch helper
 
 Run:

@@ -10,8 +10,15 @@ import {
 import {
   canEnrichCurrentTickets,
   canFetchAndEnrichTickets,
+  canShowProcessedView,
+  mergeAdIntoProcessedRows,
 } from "./lib/adEnrichment";
+import { getTicketStatusTone } from "../server/ddp/statusColors";
 import type { TicketFetchFailure, TicketFetchSuccess } from "./lib/types";
+
+function getStatusCellClass(status: string): string {
+  return `status-cell-${getTicketStatusTone(status)}`;
+}
 
 const count = ref(25);
 const technician = ref("");
@@ -22,6 +29,7 @@ const enriching = ref(false);
 const result = shallowRef<TicketFetchSuccess | null>(null);
 const failure = shallowRef<TicketFetchFailure | null>(null);
 const rawExpanded = ref(false);
+const activeView = ref<"raw" | "processed">("raw");
 
 const visibleTickets = computed(() => {
   const tickets = result.value?.tickets ?? [];
@@ -73,6 +81,46 @@ const canFetchAndEnrich = computed(() =>
   canFetchAndEnrichTickets(loading.value, enriching.value),
 );
 
+const processedRows = computed(() => result.value?.processedRows ?? []);
+
+const canShowProcessed = computed(() => canShowProcessedView(processedRows.value));
+
+const visibleProcessedRows = computed(() => {
+  const rows = processedRows.value;
+  const keyword = filterText.value.trim().toLowerCase();
+  if (!keyword) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    const searchableValues = [
+      row.ticketId,
+      row.subject,
+      row.requester,
+      row.status,
+      row.adAccount,
+      row.adName,
+      row.firstName,
+      row.lastName,
+      row.mail,
+      row.bu,
+      row.nbHostname,
+      row.vmHostname,
+      row.abnormalFlags.join(" "),
+    ];
+
+    return searchableValues.some((value) => value.toLowerCase().includes(keyword));
+  });
+});
+
+function formatAbnormalFlags(flags: string[]): string {
+  return flags.length > 0 ? flags.join(", ") : "-";
+}
+
+function resetViewAfterFetch() {
+  activeView.value = "raw";
+}
+
 async function runSampleFetch() {
   loading.value = true;
   failure.value = null;
@@ -80,6 +128,7 @@ async function runSampleFetch() {
     const next = await loadSampleTickets();
     if (next.ok) {
       result.value = next;
+      resetViewAfterFetch();
     } else {
       result.value = null;
       failure.value = next;
@@ -100,6 +149,7 @@ async function runLiveFetch() {
     });
     if (next.ok) {
       result.value = next;
+      resetViewAfterFetch();
     } else {
       result.value = null;
       failure.value = next;
@@ -120,6 +170,7 @@ async function runFetchAndEnrich() {
     });
     if (next.ok) {
       result.value = next;
+      resetViewAfterFetch();
     } else {
       result.value = null;
       failure.value = next;
@@ -148,6 +199,10 @@ async function runAdEnrichment() {
       result.value = {
         ...next,
         raw: current.raw,
+        processedRows: current.processedRows
+          ? mergeAdIntoProcessedRows(next.tickets, current.processedRows)
+          : current.processedRows,
+        processedSummary: current.processedSummary,
       };
     } else {
       failure.value = next;
@@ -229,6 +284,11 @@ async function runAdEnrichment() {
       <span>{{ result.adWarning }}</span>
     </section>
 
+    <section v-if="result?.processedSummary?.trackerWarning" class="status-band warning">
+      <strong>New-ticket tracker warning.</strong>
+      <span>{{ result.processedSummary.trackerWarning }}</span>
+    </section>
+
     <section v-if="result" class="metrics-band">
       <div class="metric">
         <span class="metric-label">Source</span>
@@ -260,9 +320,35 @@ async function runAdEnrichment() {
           }}
         </strong>
       </div>
+      <div v-if="result.processedSummary" class="metric">
+        <span class="metric-label">New Tickets</span>
+        <strong>{{ result.processedSummary.newTicketCount }}</strong>
+      </div>
+      <div v-if="result.processedSummary" class="metric">
+        <span class="metric-label">Abnormal Rows</span>
+        <strong>{{ result.processedSummary.abnormalRowCount }}</strong>
+      </div>
     </section>
 
     <section v-if="result" class="table-band">
+      <div class="view-toggle">
+        <button
+          type="button"
+          :class="{ active: activeView === 'raw' }"
+          @click="activeView = 'raw'"
+        >
+          Raw Tickets
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'processed' }"
+          :disabled="!canShowProcessed"
+          @click="activeView = 'processed'"
+        >
+          Processed DDP View
+        </button>
+      </div>
+
       <div class="toolbar">
         <input
           v-model="filterText"
@@ -283,7 +369,7 @@ async function runAdEnrichment() {
         </button>
       </div>
 
-      <div class="table-wrap">
+      <div v-if="activeView === 'raw'" class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -310,7 +396,7 @@ async function runAdEnrichment() {
               </td>
               <td>{{ ticket.requester }}</td>
               <td>{{ ticket.technician }}</td>
-              <td>{{ ticket.status }}</td>
+              <td :class="getStatusCellClass(ticket.status)">{{ ticket.status }}</td>
               <td>{{ ticket.created_time }}</td>
               <td>{{ ticket.site }}</td>
               <td>{{ ticket.category }}</td>
@@ -323,6 +409,56 @@ async function runAdEnrichment() {
               </td>
               <td>{{ ticket.ad?.manager ?? "-" }}</td>
               <td>{{ [ticket.ad?.bu, ticket.ad?.bg].filter(Boolean).join(" / ") || "-" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-else class="table-wrap processed-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket ID</th>
+              <th>Status</th>
+              <th>New</th>
+              <th>AD Account</th>
+              <th>AD Name</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Mail</th>
+              <th>BU</th>
+              <th>NB Hostname</th>
+              <th>VM Hostname</th>
+              <th>Abnormal Flags</th>
+              <th>Subject</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in visibleProcessedRows" :key="row.ticketId">
+              <td>{{ row.ticketId }}</td>
+              <td :class="getStatusCellClass(row.status)">{{ row.status }}</td>
+              <td>
+                <span v-if="row.isNewTicket" class="new-ticket-pill">New</span>
+                <span v-else>-</span>
+              </td>
+              <td>{{ row.adAccount || "-" }}</td>
+              <td>{{ row.adName || "-" }}</td>
+              <td>{{ row.firstName || "-" }}</td>
+              <td>{{ row.lastName || "-" }}</td>
+              <td>{{ row.mail || "-" }}</td>
+              <td>{{ row.bu || "-" }}</td>
+              <td>{{ row.nbHostname || "-" }}</td>
+              <td>{{ row.vmHostname || "-" }}</td>
+              <td>
+                <span v-if="row.abnormalFlags.length" class="flag-list">
+                  {{ formatAbnormalFlags(row.abnormalFlags) }}
+                </span>
+                <span v-else>-</span>
+              </td>
+              <td class="subject-cell">
+                <strong>{{ row.subject }}</strong>
+                <p>{{ row.requester }}</p>
+              </td>
             </tr>
           </tbody>
         </table>

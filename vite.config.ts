@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 import { fetchAndEnrichTickets } from "./server/fetchAndEnrichTickets";
-import { fetchTickets } from "./server/fetchTickets";
+import { attachProcessedPayload, fetchProcessAndEnrich } from "./server/fetchProcessAndEnrich";
 import { createEnrichAdHandler } from "./server/ad/enrichAdRoute";
 import { isHelpdeskAuthFailure } from "./server/helpdeskApi";
 import { readBody, sendJson } from "./server/http";
@@ -21,7 +21,8 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use("/api/tickets/sample", async (_request, response) => {
           try {
-            const result = await readSampleTickets();
+            const sample = await readSampleTickets();
+            const result = await attachProcessedPayload(sample, { persistTracker: false });
             sendJson(response, result);
           } catch (error) {
             sendJson(
@@ -45,12 +46,15 @@ export default defineConfig({
           try {
             const body = await readBody(request);
             const payload = body ? JSON.parse(body) : {};
-            const result = await fetchTickets({
-              count: Number(payload.count ?? 25),
-              technician: payload.technician || undefined,
-              filterId: payload.filterId || undefined,
-              stateFile: payload.stateFile || undefined,
-            });
+            const result = await fetchProcessAndEnrich(
+              {
+                count: Number(payload.count ?? 25),
+                technician: payload.technician || undefined,
+                filterId: payload.filterId || undefined,
+                stateFile: payload.stateFile || undefined,
+              },
+              { persistTracker: true, enrich: false },
+            );
 
             sendJson(response, result, result.ok ? 200 : 401);
           } catch (error) {

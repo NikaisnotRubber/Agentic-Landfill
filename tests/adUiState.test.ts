@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canEnrichCurrentTickets,
   canFetchAndEnrichTickets,
+  canShowProcessedView,
 } from "../src/lib/adEnrichment";
 
 function createSuccessResult() {
@@ -35,6 +36,16 @@ describe("canFetchAndEnrichTickets", () => {
   it("blocks fetch-and-enrich while fetching or enriching", () => {
     expect(canFetchAndEnrichTickets(true, false)).toBe(false);
     expect(canFetchAndEnrichTickets(false, true)).toBe(false);
+  });
+});
+
+describe("canShowProcessedView", () => {
+  it("returns true when processed rows exist", () => {
+    expect(canShowProcessedView([{ ticketId: "1" }] as never)).toBe(true);
+  });
+
+  it("returns false when processed rows are missing", () => {
+    expect(canShowProcessedView([])).toBe(false);
   });
 });
 

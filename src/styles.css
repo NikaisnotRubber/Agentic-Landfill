@@ -234,6 +234,60 @@ td p {
   line-height: 1.35;
 }
 
+.view-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(25, 27, 27, 0.08);
+}
+
+.view-toggle button {
+  min-height: 36px;
+  background: transparent;
+  color: #453f37;
+}
+
+.view-toggle button.active {
+  background: #171d1d;
+  color: #f8faf8;
+}
+
+.processed-table-wrap table {
+  min-width: 1280px;
+}
+
+.new-ticket-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(13, 127, 98, 0.14);
+  color: #0d5f49;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flag-list {
+  color: #9b4337;
+  font-size: 13px;
+}
+
+.status-cell-open {
+  background: rgba(241, 91, 76, 0.16);
+}
+
+.status-cell-closed {
+  background: rgba(111, 168, 220, 0.18);
+}
+
+.status-cell-resolved {
+  background: rgba(235, 206, 92, 0.22);
+}
+
 .raw-json {
   margin: 16px 0 0;
   padding: 14px;
