@@ -1,0 +1,37 @@
+{
+  "requiredRowFields": [
+    "ticketId",
+    "status",
+    "subject",
+    "requester",
+    "isNewTicket",
+    "adAccount",
+    "adName",
+    "firstName",
+    "lastName",
+    "mail",
+    "bu",
+    "nbHostname",
+    "vmHostname",
+    "role",
+    "application",
+    "userRoles",
+    "abnormalFlags"
+  ],
+  "ticket": {
+    "id": "contract-1",
+    "status": "Open",
+    "subject": "[DDP] contract",
+    "requester": "LEO.ZOU 鄒皓年",
+    "technician": "",
+    "created_time": "",
+    "site": "",
+    "category": "",
+    "group": "",
+    "short_description": "電腦編號(NB): TWCL1NB1234"
+  },
+  "expected": {
+    "nbHostname": "TWCL1NB1234",
+    "abnormalFlags": ["missing-ad-account", "missing-vm-hostname"]
+  }
+}

@@ -1,5 +1,6 @@
 import { Client } from "ldapts";
 
+import { enrichEntryWithManagerAccount } from "./resolveManagerSamAccount";
 import { normalizeAdEntry, type NormalizedAdEntry } from "./normalizeAdEntry";
 import {
   runWindowsIntegratedLookup,
@@ -107,7 +108,23 @@ export function createAdLookupClient(
     });
 
     const [firstEntry] = searchEntries;
-    return firstEntry ? normalizeAdEntry(firstEntry) : null;
+    if (!firstEntry) {
+      return null;
+    }
+
+    const enrichedEntry = await enrichEntryWithManagerAccount(
+      async (filter) => {
+        const { searchEntries: managerEntries } = await client.search(baseDn, {
+          scope: "sub",
+          filter,
+          attributes: ["sAMAccountName"],
+        });
+        return managerEntries[0] ?? null;
+      },
+      firstEntry,
+    );
+
+    return normalizeAdEntry(enrichedEntry);
   }
 
   return {

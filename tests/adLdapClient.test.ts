@@ -56,6 +56,7 @@ describe("createAdLookupClient", () => {
       mail: "",
       department: "",
       manager: "",
+      managerAccount: "",
       employeeId: "",
       bg: "",
       bu: "",

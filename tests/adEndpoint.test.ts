@@ -62,6 +62,7 @@ describe("createEnrichAdHandler", () => {
           mail: "",
           department: "",
           manager: "王小明",
+          managerAccount: "",
           employeeId: "",
           bg: "LTW",
           bu: "IT",

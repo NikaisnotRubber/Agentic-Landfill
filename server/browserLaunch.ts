@@ -11,7 +11,7 @@ export function resolveBrowserLaunchOptions(
   const env = args.env ?? process.env;
   const exists = args.exists ?? existsSync;
 
-  const configuredPath = env.HELPDESK_BROWSER_PATH;
+  const configuredPath = env.HELPDESK_BROWSER_PATH?.trim();
   if (configuredPath) {
     return { executablePath: configuredPath };
   }

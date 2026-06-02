@@ -1,4 +1,9 @@
-import type { TicketEnrichmentPayload, TicketFetchResult } from "./types";
+import type {
+  ProcessedDdpRow,
+  TicketEnrichmentPayload,
+  TicketFetchResult,
+  TicketRecord,
+} from "./types";
 
 export async function loadSampleTickets(): Promise<TicketFetchResult> {
   const response = await fetch("/api/tickets/sample");
@@ -48,4 +53,25 @@ export async function enrichCurrentTickets(
     body: JSON.stringify(payload),
   });
   return response.json();
+}
+
+export async function exportTicketsExcel(payload: {
+  tickets: TicketRecord[];
+  processedRows?: ProcessedDdpRow[];
+  filename?: string;
+}): Promise<Blob> {
+  const response = await fetch("/api/tickets/export-excel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errorBody?.error ?? `Excel export failed (${response.status})`);
+  }
+
+  return response.blob();
 }

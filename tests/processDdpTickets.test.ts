@@ -13,12 +13,15 @@ describe("processed DDP types", () => {
       isNewTicket: true,
       adAccount: "LEO.ZOU",
       adName: "鄒皓年",
-      firstName: "皓年",
-      lastName: "鄒",
+      firstName: "LEO",
+      lastName: "ZOU",
       mail: "LEO.ZOU@DELTAWW.COM",
       bu: "",
       nbHostname: "TWCL1NB5308",
       vmHostname: "TWPJRDPSCNLT05",
+      role: "",
+      application: "",
+      userRoles: "",
       abnormalFlags: [],
     };
 

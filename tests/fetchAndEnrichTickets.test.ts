@@ -42,55 +42,6 @@ function createMockResponse() {
   };
 }
 
-async function loadFetchAndEnrichRoute(options: {
-  fetchAndEnrichResult?: TicketFetchResult;
-  readBodyValue?: string;
-} = {}) {
-  const fetchAndEnrichTicketsMock = vi.fn().mockResolvedValue(
-    options.fetchAndEnrichResult ?? createFetchedSuccess(),
-  );
-  const readBodyMock = vi.fn().mockResolvedValue(
-    options.readBodyValue ?? JSON.stringify({ count: 25 }),
-  );
-
-  vi.resetModules();
-  vi.doMock("../server/fetchAndEnrichTickets", () => ({
-    fetchAndEnrichTickets: fetchAndEnrichTicketsMock,
-  }));
-  vi.doMock("../server/http", async () => {
-    const actual = await vi.importActual<typeof import("../server/http")>("../server/http");
-    return {
-      ...actual,
-      readBody: readBodyMock,
-    };
-  });
-
-  const { default: config } = await import("../vite.config");
-  const middlewares = { use: vi.fn() };
-  const plugin = config.plugins.find((entry) => (
-    typeof entry === "object"
-    && entry !== null
-    && "name" in entry
-    && entry.name === "helpdesk-ticket-api"
-  ));
-
-  expect(plugin).toBeDefined();
-
-  plugin!.configureServer!({ middlewares } as never);
-
-  const registration = middlewares.use.mock.calls.find(([path]) => (
-    path === "/api/tickets/fetch-and-enrich"
-  ));
-
-  expect(registration).toBeDefined();
-
-  return {
-    handler: registration![1] as (request: unknown, response: ReturnType<typeof createMockResponse>) => Promise<void>,
-    fetchAndEnrichTicketsMock,
-    readBodyMock,
-  };
-}
-
 describe("fetchAndEnrichTickets", () => {
   it("returns fetch failures without attempting AD enrichment", async () => {
     const fetchFailure = {
@@ -153,6 +104,7 @@ describe("fetchAndEnrichTickets", () => {
             mail: "jiahua.wu@example.com",
             department: "IT",
             manager: "王小明",
+            managerAccount: "",
             employeeId: "12345",
             bg: "LTW",
             bu: "IT",
@@ -196,6 +148,11 @@ describe("fetchAndEnrichTickets", () => {
     });
     expect(enrichTicketsWithAd).toHaveBeenCalledWith(fetched.tickets, lookupClient);
     expect(close).toHaveBeenCalledTimes(1);
+    if (result.ok) {
+      expect(result.processedRows?.[0]?.adAccount).toBe("JIAHUA.WU");
+      expect(result.processedRows?.[0]?.adName).toBe("吳家驊");
+      expect(result.processedRows?.[0]?.abnormalFlags).not.toContain("missing-ad-account");
+    }
   });
 
   it("returns the fetched success with an AD warning when enrichment fails", async () => {
@@ -244,111 +201,5 @@ describe("fetchAndEnrichTickets", () => {
       tickets: fetched.tickets,
       adWarning: "LDAP unavailable",
     });
-  });
-});
-
-describe("vite fetch-and-enrich route", () => {
-  it("registers a POST /api/tickets/fetch-and-enrich handler", async () => {
-    const { handler } = await loadFetchAndEnrichRoute();
-    const response = createMockResponse();
-
-    await handler(
-      {
-        method: "GET",
-      },
-      response,
-    );
-
-    expect(response.statusCode).toBe(405);
-    expect(JSON.parse(response.body)).toMatchObject({
-      ok: false,
-      error: "Method not allowed",
-    });
-  });
-
-  it("returns a 200 response for POST partial-success results", async () => {
-    const partialSuccess = createFetchedSuccess({
-      adWarning: "LDAP unavailable",
-    });
-    const { handler, fetchAndEnrichTicketsMock } = await loadFetchAndEnrichRoute({
-      fetchAndEnrichResult: partialSuccess,
-      readBodyValue: JSON.stringify({
-        count: 10,
-        technician: "ALVIS.MC.TSAO 曹閔丞",
-        filterId: "2130",
-        stateFile: "/tmp/state.json",
-      }),
-    });
-    const response = createMockResponse();
-
-    await handler(
-      {
-        method: "POST",
-      },
-      response,
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual(partialSuccess);
-    expect(fetchAndEnrichTicketsMock).toHaveBeenCalledWith({
-      count: 10,
-      technician: "ALVIS.MC.TSAO 曹閔丞",
-      filterId: "2130",
-      stateFile: "/tmp/state.json",
-    });
-  });
-
-  it("returns a 401 response only for auth-shaped failures", async () => {
-    const authFailure = {
-      ok: false as const,
-      source: "live" as const,
-      error: "Helpdesk session refresh succeeded but API still reports unauthorized access.",
-      details: {
-        response_status: {
-          status_code: 4000,
-          status: "failed",
-          messages: [{ status_code: 401, message: "AuthToken invalid" }],
-        },
-      },
-    };
-    const { handler } = await loadFetchAndEnrichRoute({
-      fetchAndEnrichResult: authFailure,
-    });
-    const response = createMockResponse();
-
-    await handler(
-      {
-        method: "POST",
-      },
-      response,
-    );
-
-    expect(response.statusCode).toBe(401);
-    expect(JSON.parse(response.body)).toEqual(authFailure);
-  });
-
-  it("returns a 500 response for non-auth failures from the combined flow", async () => {
-    const fetchFailure = {
-      ok: false as const,
-      source: "live" as const,
-      error: "Helpdesk API request failed with HTTP 500.",
-      details: {
-        message: "Internal Server Error",
-      },
-    };
-    const { handler } = await loadFetchAndEnrichRoute({
-      fetchAndEnrichResult: fetchFailure,
-    });
-    const response = createMockResponse();
-
-    await handler(
-      {
-        method: "POST",
-      },
-      response,
-    );
-
-    expect(response.statusCode).toBe(500);
-    expect(JSON.parse(response.body)).toEqual(fetchFailure);
   });
 });

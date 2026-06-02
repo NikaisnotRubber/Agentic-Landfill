@@ -1,0 +1,4 @@
+Hostname,Customer,App Profile,Application(Server Group),Server Function,zLink Version,Online Since,Online Since (UTC+08:00),Host IP,Public IP,CoIP Address
+TWPJVM02,Delta,Digital Design Platform,MGR_ROLE_A,Application Server,,,,
+TWPJVM01,Delta,Digital Design Platform,MGR_ROLE_A,Application Server,,,,
+TWPJOTHER,Delta,Digital Design Platform,SHARED_ROLE,Application Server,,,,

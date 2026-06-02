@@ -30,12 +30,13 @@ describe("normalizeAdEntry", () => {
         extensionAttribute1: "LTW/Infra",
         extensionAttribute2: "IT/Support",
       }),
-    ).toEqual({
+    ).toMatchObject({
       adAccount: "JIAHUA.WU",
       displayName: "吳家驊",
       mail: "jiahua.wu@deltaww.com",
       department: "Infra",
       manager: "王小明",
+      managerAccount: "",
       employeeId: "123456",
       bg: "LTW",
       bu: "IT",
@@ -49,9 +50,24 @@ describe("normalizeAdEntry", () => {
       mail: "",
       department: "",
       manager: "",
+      managerAccount: "",
       employeeId: "",
       bg: "",
       bu: "",
+    });
+  });
+
+  it("keeps manager sAMAccountName for Zentera role lookup", () => {
+    expect(
+      normalizeAdEntry({
+        sAMAccountName: "JIAHUA.WU",
+        cn: "吳家驊",
+        manager: "CN=LEO.ZOU,OU=Users,DC=delta,DC=corp",
+        managerSamAccountName: "LEO.ZOU",
+      }),
+    ).toMatchObject({
+      manager: "LEO.ZOU",
+      managerAccount: "LEO.ZOU",
     });
   });
 });

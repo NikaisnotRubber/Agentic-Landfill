@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from "vue";
 
 import {
   enrichCurrentTickets,
+  exportTicketsExcel,
   fetchAndEnrichLiveTickets,
   loadLiveTickets,
   loadSampleTickets,
@@ -11,7 +12,6 @@ import {
   canEnrichCurrentTickets,
   canFetchAndEnrichTickets,
   canShowProcessedView,
-  mergeAdIntoProcessedRows,
 } from "./lib/adEnrichment";
 import { getTicketStatusTone } from "../server/ddp/statusColors";
 import type { TicketFetchFailure, TicketFetchSuccess } from "./lib/types";
@@ -26,6 +26,7 @@ const stateFile = ref("IT工單(不可用，僅供參考)/delta_sso_state.json")
 const filterText = ref("");
 const loading = ref(false);
 const enriching = ref(false);
+const exporting = ref(false);
 const result = shallowRef<TicketFetchSuccess | null>(null);
 const failure = shallowRef<TicketFetchFailure | null>(null);
 const rawExpanded = ref(false);
@@ -85,6 +86,10 @@ const processedRows = computed(() => result.value?.processedRows ?? []);
 
 const canShowProcessed = computed(() => canShowProcessedView(processedRows.value));
 
+const canExportExcel = computed(
+  () => Boolean(result.value?.tickets.length) && !loading.value && !enriching.value && !exporting.value,
+);
+
 const visibleProcessedRows = computed(() => {
   const rows = processedRows.value;
   const keyword = filterText.value.trim().toLowerCase();
@@ -106,6 +111,9 @@ const visibleProcessedRows = computed(() => {
       row.bu,
       row.nbHostname,
       row.vmHostname,
+      row.role,
+      row.application,
+      row.userRoles,
       row.abnormalFlags.join(" "),
     ];
 
@@ -193,22 +201,51 @@ async function runAdEnrichment() {
     const next = await enrichCurrentTickets({
       source: current.source,
       tickets: current.tickets,
+      processedRows: current.processedRows,
+      processedSummary: current.processedSummary,
     });
 
     if (next.ok) {
       result.value = {
         ...next,
         raw: current.raw,
-        processedRows: current.processedRows
-          ? mergeAdIntoProcessedRows(next.tickets, current.processedRows)
-          : current.processedRows,
-        processedSummary: current.processedSummary,
       };
     } else {
       failure.value = next;
     }
   } finally {
     enriching.value = false;
+  }
+}
+
+async function runExportExcel() {
+  if (!result.value?.tickets.length) {
+    return;
+  }
+
+  exporting.value = true;
+  failure.value = null;
+
+  try {
+    const blob = await exportTicketsExcel({
+      tickets: result.value.tickets,
+      processedRows: result.value.processedRows,
+      filename: "ddp_ticket_maintain.xlsx",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "ddp_ticket_maintain.xlsx";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    failure.value = {
+      ok: false,
+      source: result.value.source,
+      error: error instanceof Error ? error.message : "Excel export failed",
+    };
+  } finally {
+    exporting.value = false;
   }
 }
 </script>
@@ -269,6 +306,14 @@ async function runAdEnrichment() {
             @click="runAdEnrichment"
           >
             {{ enriching ? "Enriching..." : "Enrich Current Tickets" }}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            :disabled="!canExportExcel"
+            @click="runExportExcel"
+          >
+            {{ exporting ? "Exporting..." : "Export Excel" }}
           </button>
         </div>
       </div>
@@ -429,6 +474,9 @@ async function runAdEnrichment() {
               <th>BU</th>
               <th>NB Hostname</th>
               <th>VM Hostname</th>
+              <th>Role</th>
+              <th>Application</th>
+              <th>User Roles</th>
               <th>Abnormal Flags</th>
               <th>Subject</th>
             </tr>
@@ -449,6 +497,9 @@ async function runAdEnrichment() {
               <td>{{ row.bu || "-" }}</td>
               <td>{{ row.nbHostname || "-" }}</td>
               <td>{{ row.vmHostname || "-" }}</td>
+              <td>{{ row.role || "-" }}</td>
+              <td>{{ row.application || "-" }}</td>
+              <td>{{ row.userRoles || "-" }}</td>
               <td>
                 <span v-if="row.abnormalFlags.length" class="flag-list">
                   {{ formatAbnormalFlags(row.abnormalFlags) }}

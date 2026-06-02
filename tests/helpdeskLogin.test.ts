@@ -11,31 +11,67 @@ function createLocator() {
   };
 }
 
+function createResolvableLocator(actions = createLocator()) {
+  const self = {
+    or: vi.fn(() => self),
+    ...actions,
+  };
+  return self;
+}
+
+function createLoginPageMock() {
+  const username = createResolvableLocator();
+  const password = createResolvableLocator();
+  const domain = createResolvableLocator();
+  const submit = createResolvableLocator();
+
+  const page = {
+    goto: vi.fn().mockResolvedValue(undefined),
+    waitForLoadState: vi.fn().mockResolvedValue(undefined),
+    locator: vi.fn((selector: string) => {
+      if (selector === "#username" || selector === 'input[name="j_username"]') {
+        return username;
+      }
+      if (selector === "#password" || selector === 'input[name="j_password"]') {
+        return password;
+      }
+      if (selector === 'select[name="domain"]') {
+        return domain;
+      }
+      if (selector === "#loginSDPage") {
+        return submit;
+      }
+      throw new Error(`Unexpected locator selector: ${selector}`);
+    }),
+    getByRole: vi.fn((role: string, options?: { name?: string }) => {
+      if (role === "textbox" && options?.name === "Username") {
+        return username;
+      }
+      if (role === "textbox" && options?.name === "j_username") {
+        return username;
+      }
+      if (role === "textbox" && options?.name === "Password") {
+        return password;
+      }
+      if (role === "textbox" && options?.name === "密碼") {
+        return password;
+      }
+      if (role === "button" && options?.name === "Log in") {
+        return submit;
+      }
+      if (role === "combobox") {
+        return domain;
+      }
+      throw new Error(`Unexpected locator: ${role}:${options?.name ?? ""}`);
+    }),
+  };
+
+  return { page, username, password, domain, submit };
+}
+
 describe("performHelpdeskLogin", () => {
   it("fills username, password, selects domain, and clicks Log in", async () => {
-    const username = createLocator();
-    const password = createLocator();
-    const domain = createLocator();
-    const submit = createLocator();
-    const page = {
-      goto: vi.fn().mockResolvedValue(undefined),
-      waitForLoadState: vi.fn().mockResolvedValue(undefined),
-      getByRole: vi.fn((role: string, options?: { name?: string }) => {
-        if (role === "textbox" && options?.name === "Username") {
-          return username;
-        }
-        if (role === "textbox" && options?.name === "Password") {
-          return password;
-        }
-        if (role === "button" && options?.name === "Log in") {
-          return submit;
-        }
-        if (role === "combobox") {
-          return domain;
-        }
-        throw new Error(`Unexpected locator: ${role}:${options?.name ?? ""}`);
-      }),
-    };
+    const { page, username, password, domain, submit } = createLoginPageMock();
 
     await performHelpdeskLogin(page as never, {
       baseUrl: "https://ithelpdesk.deltaww.com/",
@@ -60,8 +96,15 @@ describe("performHelpdeskLogin", () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       waitForLoadState: vi.fn().mockResolvedValue(undefined),
+      locator: vi.fn(() => {
+        const missing = createLocator();
+        missing.waitFor = vi.fn().mockRejectedValue(new Error("missing locator"));
+        return { or: vi.fn(() => missing) };
+      }),
       getByRole: vi.fn(() => {
-        throw new Error("missing locator");
+        const missing = createLocator();
+        missing.waitFor = vi.fn().mockRejectedValue(new Error("missing locator"));
+        return { or: vi.fn(() => missing) };
       }),
     };
 

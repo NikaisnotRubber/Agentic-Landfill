@@ -12,6 +12,9 @@ export type ProcessedDdpRow = {
   bu: string;
   nbHostname: string;
   vmHostname: string;
+  role: string;
+  application: string;
+  userRoles: string;
   abnormalFlags: string[];
 };
 
@@ -45,6 +48,7 @@ export type TicketAdInfo = {
   mail: string;
   department: string;
   manager: string;
+  managerAccount: string;
   employeeId: string;
   bg: string;
   bu: string;
@@ -84,4 +88,6 @@ export type TicketFetchResult = TicketFetchSuccess | TicketFetchFailure;
 export type TicketEnrichmentPayload = {
   source: TicketFetchSuccess["source"];
   tickets: TicketRecord[];
+  processedRows?: ProcessedDdpRow[];
+  processedSummary?: ProcessedDdpSummary;
 };

@@ -1,0 +1,10 @@
+{
+  "description": "Expected Excel column values for golden-1 ticket (see phase2bZenteraExport.test.ts)",
+  "columns": {
+    "Role": "SHARED_ROLE",
+    "Application": "Digital Design Platform",
+    "User Roles": "MGR_ROLE_A, SHARED_ROLE",
+    "VM HostName": "TWPJOTHER",
+    "BU": "IT"
+  }
+}

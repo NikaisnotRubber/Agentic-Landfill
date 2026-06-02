@@ -12,6 +12,9 @@ export type ProcessedDdpRow = {
   bu: string;
   nbHostname: string;
   vmHostname: string;
+  role: string;
+  application: string;
+  userRoles: string;
   abnormalFlags: string[];
 };
 

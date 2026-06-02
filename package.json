@@ -5,10 +5,13 @@
     "build": "vite build",
     "test": "vitest run",
     "fetch:tickets": "tsx server/fetchTicketsCli.ts",
-    "auth:login": "tsx server/helpdeskLoginCli.ts"
+    "auth:login": "tsx server/helpdeskLoginCli.ts",
+    "export:excel": "tsx server/exportDdpExcelCli.ts",
+    "workflow:ddp": "tsx server/workflowDdpCli.ts"
   },
   "dependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260521.1",
+    "exceljs": "^4.4.0",
     "ldapts": "^8.1.8",
     "playwright": "^1.60.0",
     "vue": "^3.5.34",

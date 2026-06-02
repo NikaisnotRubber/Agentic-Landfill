@@ -1,33 +1,40 @@
 import type { Locator, Page } from "playwright";
 
-type NamedRoleOptions = {
-  name: string;
-};
-
-function getRoleLocator(
-  page: Page,
-  role: "textbox" | "button" | "combobox",
-  options?: NamedRoleOptions,
-): Locator {
-  if (role === "combobox") {
-    return page.getByRole(role);
-  }
-
-  return page.getByRole(role, options);
+function firstMatching(...locators: Locator[]): Locator {
+  return locators.slice(1).reduce(
+    (combined, locator) => combined.or(locator),
+    locators[0],
+  );
 }
 
 export function getUsernameField(page: Page): Locator {
-  return getRoleLocator(page, "textbox", { name: "Username" });
+  return firstMatching(
+    page.locator("#username"),
+    page.locator('input[name="j_username"]'),
+    page.getByRole("textbox", { name: "Username" }),
+    page.getByRole("textbox", { name: "j_username" }),
+  );
 }
 
 export function getPasswordField(page: Page): Locator {
-  return getRoleLocator(page, "textbox", { name: "Password" });
+  return firstMatching(
+    page.locator("#password"),
+    page.locator('input[name="j_password"]'),
+    page.getByRole("textbox", { name: "Password" }),
+    page.getByRole("textbox", { name: "密碼" }),
+  );
 }
 
 export function getDomainSelector(page: Page): Locator {
-  return getRoleLocator(page, "combobox");
+  return firstMatching(
+    page.locator('select[name="domain"]'),
+    page.getByRole("combobox"),
+  );
 }
 
 export function getLoginButton(page: Page): Locator {
-  return getRoleLocator(page, "button", { name: "Log in" });
+  return firstMatching(
+    page.locator("#loginSDPage"),
+    page.getByRole("button", { name: "Log in" }),
+  );
 }

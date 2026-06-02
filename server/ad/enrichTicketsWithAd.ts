@@ -19,6 +19,7 @@ function emptyAdInfo(status: TicketAdInfo["status"], adAccount = "", error?: str
     mail: "",
     department: "",
     manager: "",
+    managerAccount: "",
     employeeId: "",
     bg: "",
     bu: "",

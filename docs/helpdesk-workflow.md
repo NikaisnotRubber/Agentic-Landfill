@@ -43,9 +43,41 @@ This writes a verified Playwright storage-state file to the configured `stateFil
 ### Processed DDP View
 
 - Available after `Fetch Live`, `Load Sample`, or `Fetch + Enrich`
-- Shows parsed fields derived from `short_description`
+- AD identity fields come from LDAP enrichment on the requester
+- `NB Hostname` / `VM Hostname` in the ticket description are parsed when present
+- When the description has no VM hostname, the app looks up the **applicant's direct manager** (`managerAccount` from LDAP) in Zentera exports under `Mapping ADGroup、Zentera/` (`User_Roles_*.csv` → `Server_Profiles_*.csv`)
+- If multiple VMs match, the first hostname in alphabetical order is shown and `ambiguous-vm-hostname` is flagged
+- Without LDAP enrich, **AD Account** can be parsed from the ticket description (`Account name` / 帳號 labels); the Helpdesk **requester** field is only used when it matches the applicant in the description (submitter vs applicant)
+- Processed **abnormal flags** and Excel **異常** column use the same rules (including `missing-vm-hostname` and `ambiguous-vm-hostname`)
 - Highlights newly observed tickets and abnormal rows
 - Use the `Raw Tickets` / `Processed DDP View` toggle in the table area
+
+### Export Excel
+
+- Available when tickets are loaded (same data as Processed DDP View)
+- Produces `ddp_ticket_maintain.xlsx` with sheets **待處理** (Open/Onhold), **Closed**, and **All**
+- Column order and styling follow `IT工單(不可用，僅供參考)/process_ddp_tickets.py`
+- Abnormal column matches Processed `abnormalFlags` (including Zentera `missing-vm-hostname` / `ambiguous-vm-hostname`)
+- **Role** / **Application** / **User Roles** columns: from Zentera CSV indexes when VM and manager enrich are available; Role may fall back to a two-letter code derived from the VM hostname (notebook rule)
+- NAS, Template Name, Location, NEW VM remain empty unless a future data source is added
+- Server route: `POST /api/tickets/export-excel`
+
+```bash
+pnpm export:excel
+pnpm export:excel -- --output=./ddp_ticket_maintain.xlsx
+```
+
+### One-shot workflow (CLI)
+
+Fetch live tickets with AD enrich, then write Excel (no UI):
+
+```bash
+pnpm workflow:ddp -- --count=25 --output=./ddp_ticket_maintain.xlsx
+```
+
+Requires a valid Helpdesk session (`pnpm auth:login`) and LDAP reachability for enrich.
+
+Progress and remaining work: [`docs/PROGRESS.md`](PROGRESS.md).
 
 ## CLI fetch helper
 

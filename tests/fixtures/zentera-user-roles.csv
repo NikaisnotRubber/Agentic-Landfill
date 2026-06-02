@@ -1,0 +1,3 @@
+Customer,Project,Role,User,Application(Server Group)/Service/MSG Device Group,Access Policies
+Delta,Test,MGR_ROLE_A,LEO.ZOU,,1
+Delta,Test,SHARED_ROLE,LEO.ZOU,,1

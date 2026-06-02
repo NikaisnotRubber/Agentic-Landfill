@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { rebuildProcessedPayload } from "../ddp/rebuildProcessedPayload";
 import { readBody, sendJson } from "../http";
 import type { TicketEnrichmentPayload, TicketFetchFailure, TicketFetchSuccess } from "../types";
 import { createAdLookupClient } from "./ldapClient";
@@ -52,12 +53,18 @@ export function createEnrichAdHandler(deps: HandlerDeps = {}) {
 
       lookupClient = createLookupClient();
       const result = await enrichTicketsWithAd(parsed.tickets, lookupClient);
+      const reprocessed = rebuildProcessedPayload(result.tickets, {
+        processedRows: parsed.processedRows,
+        processedSummary: parsed.processedSummary,
+      });
       const payload: TicketFetchSuccess = {
         ok: true,
         source: parsed.source,
         count: result.tickets.length,
         tickets: result.tickets,
         adSummary: result.summary,
+        processedRows: reprocessed.processedRows,
+        processedSummary: reprocessed.processedSummary,
       };
 
       sendJson(response, payload, 200);

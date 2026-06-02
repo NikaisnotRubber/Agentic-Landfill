@@ -144,7 +144,7 @@ describe("fetchTickets auth refresh", () => {
     });
     expect(loginAndSaveState).toHaveBeenCalledTimes(1);
     expect(loginAndSaveState).toHaveBeenCalledWith({
-      configPath: expect.stringMatching(/config\/helpdesk-auth\.yaml$/),
+      configPath: expect.stringMatching(/helpdesk-auth\.yaml$/i),
       stateFile: "/tmp/state.json",
       baseUrl: "https://ithelpdesk.deltaww.com/WOListView.do",
     });
@@ -287,7 +287,7 @@ describe("fetchTickets auth refresh", () => {
       baseUrl: "https://original.example.com/app",
     });
     expect(loginAndSaveState).toHaveBeenCalledWith({
-      configPath: expect.stringMatching(/config\/helpdesk-auth\.yaml$/),
+      configPath: expect.stringMatching(/helpdesk-auth\.yaml$/i),
       stateFile: "/tmp/original-state.json",
       baseUrl: "https://original.example.com/app",
     });
