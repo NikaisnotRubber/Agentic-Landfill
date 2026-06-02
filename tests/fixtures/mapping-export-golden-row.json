@@ -1,0 +1,24 @@
+{
+  "description": "Expected serialized export cells for platformPipeline fixture row (LEO.ZOU + TWPJOTHER)",
+  "excelHeaders": {
+    "AD Account": "LEO.ZOU",
+    "AD Name (Chinese Name)": "鄒小明",
+    "FirstName": "鄒",
+    "LastName": "小明",
+    "Mail": "leo.zou@deltaww.com",
+    "BG": "ITBG",
+    "BU": "IT",
+    "Role": "",
+    "NB Hostname": "",
+    "Group Owner": "G-Delta-rollout_admin",
+    "Group Name": "L-TW-EXAMPLE",
+    "NAS Folder Name": "",
+    "VM HostName": "TWPJOTHER",
+    "Host IP": "10.1.2.3",
+    "NEW VM": "",
+    "User Roles": "MGR_ROLE_A",
+    "Application": "Digital Design Platform",
+    "Template Name": "",
+    "Location": ""
+  }
+}

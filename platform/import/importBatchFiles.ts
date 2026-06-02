@@ -9,6 +9,8 @@ import { parseCsvRecords } from "../../server/zentera/parseCsv";
 import { normalizeAdAccount } from "./normalizeAccount";
 import { expandRoleUsersFromCell } from "./expandRoleUsers";
 import { parseAdGroupsXlsx } from "./parseAdGroupsXlsx";
+import { repairSwappedUserNames } from "./repairUserNames";
+import { validateBatchFiles } from "./validateBatchFiles";
 
 export type BatchFileSet = {
   adGroupsXlsx: string;
@@ -26,6 +28,10 @@ export async function importBatchFiles(
   batchId: string,
   files: BatchFileSet,
 ): Promise<{ adMembers: number; users: number; roleUsers: number; servers: number }> {
+  const validation = await validateBatchFiles(files);
+  if (!validation.ok) {
+    throw new Error(validation.error);
+  }
   const insertMember = db.prepare(`
     INSERT INTO raw_ad_members (id, batch_id, group_name, ad_account, cn, mail, bu, bg)
     VALUES (@id, @batch_id, @group_name, @ad_account, @cn, @mail, @bu, @bg)
@@ -93,12 +99,16 @@ export async function importBatchFiles(
   const usersText = await readFile(files.usersCsv, "utf8");
   const usersRecords = parseCsvRecords(usersText);
   for (const record of usersRecords) {
+    const repaired = repairSwappedUserNames(
+      record.FirstName ?? record["First Name"] ?? "",
+      record.LastName ?? record["Last Name"] ?? "",
+    );
     insertUser.run({
       id: randomUUID(),
       batch_id: batchId,
       account: normalizeAdAccount(record.Account ?? record.account ?? ""),
-      first_name: record.FirstName ?? record["First Name"] ?? "",
-      last_name: record.LastName ?? record["Last Name"] ?? "",
+      first_name: repaired.firstName,
+      last_name: repaired.lastName,
       application: record.Application ?? "",
       mail: (record.Mail ?? record.mail ?? "").toLowerCase(),
     });

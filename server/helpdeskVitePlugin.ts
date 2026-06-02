@@ -7,6 +7,7 @@ import { fetchAndEnrichTickets } from "./fetchAndEnrichTickets";
 import { attachProcessedPayload, fetchProcessAndEnrich } from "./fetchProcessAndEnrich";
 import { isHelpdeskAuthFailure } from "./helpdeskApi";
 import { readBody, sendJson } from "./http";
+import { registerPlatformMappingRoutes } from "./platformMappingApiPlugin";
 import { readSampleTickets } from "./sampleTickets";
 import type { TicketFetchFailure } from "./types";
 
@@ -96,6 +97,8 @@ export function helpdeskTicketApiPlugin(): Plugin {
       server.middlewares.use("/api/tickets/export-excel", async (request, response) => {
         await handleExportDdpExcel(request, response);
       });
+
+      registerPlatformMappingRoutes(server.middlewares);
     },
   };
 }

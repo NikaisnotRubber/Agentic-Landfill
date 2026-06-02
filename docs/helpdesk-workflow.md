@@ -97,6 +97,18 @@ pnpm sharepoint:fetch
 pnpm sharepoint:fetch -- --config=config/sharepoint.yaml
 ```
 
+### Platform mapping API (Track B)
+
+Requires a published batch in `data/platform.db` (run `pnpm plat:run` first).
+
+```bash
+curl http://localhost:5173/api/platform/mapping/published
+curl "http://localhost:5173/api/platform/mapping/rows?adAccount=LEO.ZOU&limit=10"
+curl http://localhost:5173/api/platform/mapping/batches
+```
+
+Set `USE_PLATFORM_MAPPING_DB=1` (see `config/platform.example.env`) to prefer published `mapping_row` over Zentera CSV indexes during Processed enrich.
+
 Progress and remaining work: [`docs/PROGRESS.md`](PROGRESS.md).
 
 ## CLI fetch helper

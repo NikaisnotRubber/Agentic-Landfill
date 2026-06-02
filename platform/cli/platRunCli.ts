@@ -2,12 +2,14 @@ import path from "node:path";
 
 import { createBatch, runBatchImportAndMap } from "../batch/batchService";
 import { openMigratedPlatformDatabase } from "../db/database";
+import { exportMappingCsv } from "../export/exportMappingCsv";
 import { exportMappingXlsx } from "../export/exportMappingXlsx";
 import type { BatchFileSet } from "../import/importBatchFiles";
 
 function parseArgs(argv: string[]) {
   const dataDir = argv.find((arg) => arg.startsWith("--data-dir="))?.slice("--data-dir=".length);
   const output = argv.find((arg) => arg.startsWith("--output="))?.slice("--output=".length);
+  const csvOutput = argv.find((arg) => arg.startsWith("--csv-output="))?.slice("--csv-output=".length);
   const batchId = argv.find((arg) => arg.startsWith("--batch="))?.slice("--batch=".length);
 
   if (!dataDir) {
@@ -19,6 +21,7 @@ function parseArgs(argv: string[]) {
     outputPath: output
       ? path.resolve(process.cwd(), output)
       : path.resolve(process.cwd(), "ad_user_vm_mapping.xlsx"),
+    csvOutputPath: csvOutput ? path.resolve(process.cwd(), csvOutput) : undefined,
     batchId,
   };
 }
@@ -56,6 +59,15 @@ async function main() {
     outputPath: args.outputPath,
   });
   console.log(`Wrote ${exported.outputPath} (${exported.rowCount} rows).`);
+
+  if (args.csvOutputPath) {
+    const csvExported = await exportMappingCsv({
+      db,
+      batchId,
+      outputPath: args.csvOutputPath,
+    });
+    console.log(`Wrote ${csvExported.outputPath} (${csvExported.rowCount} rows).`);
+  }
 }
 
 main().catch((error) => {

@@ -63,7 +63,7 @@ tests/platform/
 - [x] **B1.3** `raw_*` 表（AD members、users、role_user、servers）。
 - [x] **B1.4** `mapping_row` — 欄位名 = JSON `dbColumn` + internal。
 - [x] **B1.5** `platform/db/database.ts` — Node `node:sqlite` + migrate。
-- [ ] **B1.6** 本機 dev：`.env.example` 增加 `DATABASE_URL`；文件說明 PG vs SQLite。
+- [x] **B1.6** `config/platform.example.env`（`DATABASE_URL`、`USE_PLATFORM_MAPPING_DB`）。
 - [x] **B1.7** 測試：`tests/platform/platformPipeline.test.ts` 端到端建表讀寫。
 
 **驗收：** migration 可重複執行；欄位與契約 JSON 100% 對照。
@@ -74,10 +74,10 @@ tests/platform/
 
 - [x] **B2.1** `platform/import/parseAdGroupsXlsx.ts`。
 - [x] **B2.2** 重用 `server/zentera/parseCsv` + `importBatchFiles.ts`。
-- [ ] **B2.3** `validateBatchFiles.ts` — 必要欄位驗證（待補）。
+- [x] **B2.3** `validateBatchFiles.ts`。
 - [x] **B2.4** `platform/import/expandRoleUsers.ts`。
 - [x] **B2.5** `platform/import/normalizeAccount.ts`。
-- [ ] **B2.6** `repairUserNames` heuristic（待補）。
+- [x] **B2.6** `repairUserNames.ts`（LastName 單字對調）。
 - [x] **B2.7** `tests/platform/platformPipeline.test.ts`。
 - [x] **B2.8** 合併於 `pnpm plat:run`。
 
@@ -102,9 +102,9 @@ tests/platform/
 ## B4 — 匯出（REQ-PLAT-004）
 
 - [x] **B4.1** `platform/export/exportMappingXlsx.ts`。
-- [ ] **B4.2** `exportMappingCsv.ts`（待補）。
+- [x] **B4.2** `exportMappingCsv.ts`（UTF-8 BOM）。
 - [x] **B4.3** `pnpm plat:run -- --data-dir=... --output=...`。
-- [ ] **B4.4** Golden row JSON（待補）。
+- [x] **B4.4** `mapping-export-golden-row.json` + 測試。
 - [x] **B4.5** `package.json`：`plat:run`。
 
 **驗收：** 匯出檔欄位順序、表頭字面與契約 JSON 完全一致。
@@ -113,9 +113,9 @@ tests/platform/
 
 ## B5 — Published batch 讀取（REQ-PLAT-005）
 
-- [ ] **B5.1** `GET /api/platform/mapping/published` — 元資料（batch_id, row_count, exported_at）。
-- [ ] **B5.2** `GET /api/platform/mapping/rows?adAccount=&limit=` — 分頁查詢（供 UI / enrich）。
-- [ ] **B5.3** 依 **D-DB-02** 保留歷史批次列表 API（可選 V1.1）。
+- [x] **B5.1** `GET /api/platform/mapping/published`。
+- [x] **B5.2** `GET /api/platform/mapping/rows?adAccount=&limit=&offset=`。
+- [x] **B5.3** `GET /api/platform/mapping/batches`。
 
 **驗收：** 無 UI 亦可 curl 取得 published 列；與 DB 一致。
 
@@ -124,10 +124,10 @@ tests/platform/
 ## B6 — Helpdesk 匯出契約合一（REQ-PLAT-006）
 
 - [ ] **B6.1** 決策 **D-TICKET-01**（Host IP 是否進工單表）。
-- [ ] **B6.2** 重構 `server/excel/buildDdpExcelRows.ts` — 映射欄從 `serializeMappingRow` 或共用 `mappingFieldId` map 取值。
-- [ ] **B6.3** `ProcessedDdpRow` / enrich：可選從 published `mapping_row` by `ad_account` 補 `role`, `application`, `user_roles`（取代僅 CSV 索引）。
-- [ ] **B6.4** 更新 `export-golden-columns.json` 與契約 `inTicketWorkbook` 對齊。
-- [ ] **B6.5** 文件更新 [`helpdesk-workflow.md`](../../helpdesk-workflow.md)。
+- [ ] **B6.2** 重構 `buildDdpExcelRows` 共用 `serializeMappingRow`（待補）。
+- [x] **B6.3** `USE_PLATFORM_MAPPING_DB=1` 時 `resolveZenteraExportFields` 讀 published DB。
+- [ ] **B6.4** 更新 `export-golden-columns.json`（待補）。
+- [x] **B6.5** `helpdesk-workflow.md` 平台 API 小節。
 
 **驗收：** `pnpm test` 工單匯出測試仍綠；映射欄與平台匯出同一 transform。
 

@@ -7,6 +7,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createBatch, runBatchImportAndMap } from "../../platform/batch/batchService";
 import { loadMappingExportSchema } from "../../platform/contract/loadMappingExportSchema";
 import { openMigratedPlatformDatabase, type PlatformDatabase } from "../../platform/db/database";
+import { exportMappingCsv } from "../../platform/export/exportMappingCsv";
 import { exportMappingXlsx } from "../../platform/export/exportMappingXlsx";
 import { serializeMappingRow } from "../../platform/export/serializeMappingRow";
 import { loadMappingRows } from "../../platform/mapping/materializeMappingRows";
@@ -81,6 +82,10 @@ describe("platform pipeline", () => {
     const outPath = path.join(FIXTURE_DIR, "out.xlsx");
     const exported = await exportMappingXlsx({ db, batchId, outputPath: outPath });
     expect(exported.rowCount).toBe(result.mappingRows);
+
+    const csvPath = path.join(FIXTURE_DIR, "out.csv");
+    const csvExported = await exportMappingCsv({ db, batchId, outputPath: csvPath });
+    expect(csvExported.rowCount).toBe(result.mappingRows);
   });
 
   it("excludes notebook EXCLUDE_GROUPS", async () => {

@@ -1,5 +1,32 @@
+import { openMigratedPlatformDatabase } from "../../platform/db/database";
+import { lookupPublishedMappingRow } from "../../platform/lookup/lookupPublishedMappingRow";
 import { deriveRoleCodeFromVmHostname } from "./deriveRoleFromVmHostname";
 import type { ZenteraExportFields, ZenteraIndexes } from "./types";
+
+function resolveFromPublishedMappingDb(options: {
+  applicantAccount: string;
+  vmHostname: string;
+}): ZenteraExportFields | null {
+  if (process.env.USE_PLATFORM_MAPPING_DB !== "1") {
+    return null;
+  }
+
+  try {
+    const db = openMigratedPlatformDatabase();
+    const match = lookupPublishedMappingRow(db, options.applicantAccount, options.vmHostname);
+    if (!match) {
+      return null;
+    }
+
+    return {
+      role: match.role,
+      application: match.application,
+      userRoles: match.userRoles,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function normalizeAccount(value: string): string {
   return value.trim().toUpperCase();
@@ -86,6 +113,14 @@ export function resolveZenteraExportFields(options: {
   applicantAccount: string;
   zentera: ZenteraIndexes | null;
 }): ZenteraExportFields {
+  const fromPlatform = resolveFromPublishedMappingDb({
+    applicantAccount: options.applicantAccount,
+    vmHostname: options.vmHostname,
+  });
+  if (fromPlatform) {
+    return fromPlatform;
+  }
+
   const role = resolveRoleName(options.vmHostname, options.zentera);
 
   return {
