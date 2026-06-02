@@ -18,7 +18,10 @@ google-chrome-stable_current_amd64.deb
 config/helpdesk-auth.local.yaml
 config/helpdesk-auth.yaml
 config/sharepoint.yaml
+data/
 **/~$*.xlsx
+tests/fixtures/platform-batch/test.db
+tests/fixtures/platform-batch/out.xlsx
 IT工單(不可用，僅供參考)/delta_sso_state.json
 IT工單(不可用，僅供參考)/sp_state.json
 AD 群組/build/

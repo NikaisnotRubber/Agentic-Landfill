@@ -44,13 +44,13 @@ tests/platform/
 
 ## B0 — 匯出契約（REQ-PLAT-003）
 
-- [ ] **B0.1** 將 [`mapping-export-schema.json`](../fixtures/mapping-export-schema.json) 定為唯一契約（spec 已建立）。
-- [ ] **B0.2** `platform/contract/loadMappingExportSchema.ts` — 載入並驗證 JSON（欄位唯一、順序穩定）。
-- [ ] **B0.3** `platform/export/serializeMappingRow.ts` — `MappingRow` → `string[]`（19 欄），套用 `transform`。
-- [ ] **B0.4** `platform/export/MappingRow` TypeScript 型別（由 schema 生成或 hand-maintained 與 JSON 同步）。
-- [ ] **B0.5** `tests/platform/mappingExportSerialize.test.ts` — 每個 `logicalType` 至少一則 transform 案例。
-- [ ] **B0.6** `tests/platform/mappingExportSchema.test.ts` — 與 spec §3.2 欄位數、表頭字面一致。
-- [ ] **B0.7** 文件：在 [`platform_requirements_draft.md`](../../../Mapping%20ADGroup%E3%80%81Zentera/docs/platform_requirements_draft.md) 頂部加連結至本 spec。
+- [x] **B0.1** 將 [`mapping-export-schema.json`](../fixtures/mapping-export-schema.json) 定為唯一契約（spec 已建立）。
+- [x] **B0.2** `platform/contract/loadMappingExportSchema.ts` — 載入並驗證 JSON（欄位唯一、順序穩定）。
+- [x] **B0.3** `platform/export/serializeMappingRow.ts` — `MappingRow` → `string[]`（19 欄），套用 `transform`。
+- [x] **B0.4** `platform/export/types.ts` — `MappingRow` 與 JSON `dbColumn` 同步。
+- [x] **B0.5** `tests/platform/mappingExportSerialize.test.ts` — transform / Role 覆寫案例。
+- [x] **B0.6** `tests/platform/mappingExportSchema.test.ts` — 與 spec §3.2 欄位數、表頭字面一致。
+- [x] **B0.7** 文件：在 [`platform_requirements_draft.md`](../../../Mapping%20ADGroup%E3%80%81Zentera/docs/platform_requirements_draft.md) 頂部加連結至本 spec。
 
 **驗收：** `pnpm test` 含 B0 測試全綠；無 DB 亦可跑。
 
@@ -58,13 +58,13 @@ tests/platform/
 
 ## B1 — 資料庫（REQ-PLAT-001）
 
-- [ ] **B1.1** 決策 **D-DB-01**：確認 `platform/` 路徑。
-- [ ] **B1.2** `platform/schema/001_batches.sql` — `batches`, `batch_files`, 狀態枚舉。
-- [ ] **B1.3** `platform/schema/002_raw_normalized.sql` — `raw_*`, `normalized_*`（欄位對齊來源檔，見 `ddp_analysis_review.md`）。
-- [ ] **B1.4** `platform/schema/003_mapping_row.sql` — 欄位名 = JSON `dbColumn` + `internalColumns`。
-- [ ] **B1.5** `platform/db/migrate.ts` 或 drizzle/prisma migration（擇一，與 repo 風格一致）。
+- [x] **B1.1** 決策 **D-DB-01**：`platform/` 於 repo 根。
+- [x] **B1.2** `platform/db/schema.ts` — `batches`, `batch_files`。
+- [x] **B1.3** `raw_*` 表（AD members、users、role_user、servers）。
+- [x] **B1.4** `mapping_row` — 欄位名 = JSON `dbColumn` + internal。
+- [x] **B1.5** `platform/db/database.ts` — Node `node:sqlite` + migrate。
 - [ ] **B1.6** 本機 dev：`.env.example` 增加 `DATABASE_URL`；文件說明 PG vs SQLite。
-- [ ] **B1.7** 測試：in-memory 或 testcontainers 建立表；插入一筆 `mapping_row` 再讀回。
+- [x] **B1.7** 測試：`tests/platform/platformPipeline.test.ts` 端到端建表讀寫。
 
 **驗收：** migration 可重複執行；欄位與契約 JSON 100% 對照。
 
@@ -72,14 +72,14 @@ tests/platform/
 
 ## B2 — 匯入與正規化（REQ-PLAT-002 前半）
 
-- [ ] **B2.1** `platform/import/parseAdGroupsXlsx.ts` — `群組清單` + BG sheets → raw。
-- [ ] **B2.2** `platform/import/parseZenteraCsv.ts` — roles, users, servers（欄位對齊 fixture）。
-- [ ] **B2.3** `platform/import/validateBatchFiles.ts` — 必要欄位、副檔名、checksum。
-- [ ] **B2.4** `platform/normalize/expandRoleUsers.ts` — 逗號分隔 Users 展開。
-- [ ] **B2.5** `platform/normalize/normalizeAccounts.ts` — AD Account 大寫。
-- [ ] **B2.6** `platform/normalize/repairUserNames.ts` — LastName 長度 heuristic（對齊 notebook）。
-- [ ] **B2.7** `tests/platform/import*.test.ts` — 使用 `tests/fixtures/zentera-*.csv` 與最小 xlsx slice。
-- [ ] **B2.8** CLI：`pnpm plat:import -- --batch <id> --data-dir <path>`。
+- [x] **B2.1** `platform/import/parseAdGroupsXlsx.ts`。
+- [x] **B2.2** 重用 `server/zentera/parseCsv` + `importBatchFiles.ts`。
+- [ ] **B2.3** `validateBatchFiles.ts` — 必要欄位驗證（待補）。
+- [x] **B2.4** `platform/import/expandRoleUsers.ts`。
+- [x] **B2.5** `platform/import/normalizeAccount.ts`。
+- [ ] **B2.6** `repairUserNames` heuristic（待補）。
+- [x] **B2.7** `tests/platform/platformPipeline.test.ts`。
+- [x] **B2.8** 合併於 `pnpm plat:run`。
 
 **驗收：** 固定 fixture 匯入後，normalized 列數與 notebook 文件記載同數量級（可標註 expected counts）。
 
@@ -87,13 +87,13 @@ tests/platform/
 
 ## B3 — 映射物化（REQ-PLAT-002 後半）
 
-- [ ] **B3.1** `platform/mapping/materializeMappingRows.ts` — SQL 或 TS join（與 notebook 最終 SELECT 對照）。
-- [ ] **B3.2** `platform/mapping/inferRoleFromHostname.ts` — `([A-Za-z]{2})\d+$` → `role_inferred` / `role_export`。
-- [ ] **B3.3** `platform/mapping/excludeAdGroups.ts` — notebook 排除群組規則（從 review 抽出清單或設定檔）。
-- [ ] **B3.4** 寫入 `mapping_row`；`batch` 狀態 → `published`（舊 published → `archived`）。
-- [ ] **B3.5** `platform/mapping/listMappingExceptions.ts` — 缺 user/role/server 列入 `mapping_exceptions` 表（可簡化 V1）。
-- [ ] **B3.6** CLI：`pnpm plat:map -- --batch <id>`。
-- [ ] **B3.7** 可選：與既有 `ad_user_vm_mapping.xlsx` 抽樣 50 列 diff 腳本。
+- [x] **B3.1** `platform/mapping/materializeMappingRows.ts`（INNER JOIN users、LEFT JOIN role/server）。
+- [x] **B3.2** `platform/mapping/inferRoleFromHostname.ts`。
+- [x] **B3.3** `platform/mapping/excludedAdGroups.ts`。
+- [x] **B3.4** 寫入 `mapping_row` + published/archived。
+- [ ] **B3.5** `mapping_exceptions` 表（待補）。
+- [x] **B3.6** 合併於 `pnpm plat:run`。
+- [ ] **B3.7** 與既有 xlsx 抽樣 diff（待補）。
 
 **驗收：** 同一批來源檔重跑兩次，`mapping_row` checksum 一致；列數邏輯與 review 一致（join 膨脹非 bug）。
 
@@ -101,11 +101,11 @@ tests/platform/
 
 ## B4 — 匯出（REQ-PLAT-004）
 
-- [ ] **B4.1** `platform/export/exportMappingXlsx.ts` — 表頭 = `excelHeader`；資料列用 B0 serializer。
-- [ ] **B4.2** `platform/export/exportMappingCsv.ts` — UTF-8 BOM 可選。
-- [ ] **B4.3** CLI：`pnpm plat:export -- --batch <id> --output ad_user_vm_mapping.xlsx`。
-- [ ] **B4.4** Golden：`tests/platform/fixtures/mapping-export-golden-row.json` + xlsx 或儲存格斷言。
-- [ ] **B4.5** `package.json` scripts：`plat:import`, `plat:map`, `plat:export`。
+- [x] **B4.1** `platform/export/exportMappingXlsx.ts`。
+- [ ] **B4.2** `exportMappingCsv.ts`（待補）。
+- [x] **B4.3** `pnpm plat:run -- --data-dir=... --output=...`。
+- [ ] **B4.4** Golden row JSON（待補）。
+- [x] **B4.5** `package.json`：`plat:run`。
 
 **驗收：** 匯出檔欄位順序、表頭字面與契約 JSON 完全一致。
 
