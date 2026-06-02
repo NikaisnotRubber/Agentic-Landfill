@@ -2,9 +2,9 @@
 
 
 
-> **最後更新**：2026-06-02（**Phase 3 已實作**，待合併 `master`）  
-> **開發分支：** `feat/phase-2-vm-identity-excel` → 您確認功能後才合併 `master`  
-> **目前請勾選：** [`docs/superpowers/plans/2026-06-02-phase-2-todo.md`](superpowers/plans/2026-06-02-phase-2-todo.md)  
+> **最後更新**：2026-06-02（**Phase 3 已合併 `master`**；**Phase 4 開發中**）  
+> **開發分支：** `feat/phase-4-ops`（自 `master` @ `ec626d9`）  
+> **目前請勾選：** [`docs/superpowers/plans/2026-06-02-phase-4-todo.md`](superpowers/plans/2026-06-02-phase-4-todo.md)  
 > **分支規則：** [`docs/superpowers/plans/2026-06-02-branch-workflow.md`](superpowers/plans/2026-06-02-branch-workflow.md)  
 > **維護方式**：見根目錄 [`AGENTS.md`](../AGENTS.md)。
 
@@ -66,7 +66,7 @@
 
 
 
-## 目前進行中：Phase 2（唯一主線 To-Do）
+## 目前進行中：Phase 4（營運批次）
 
 
 
@@ -74,9 +74,9 @@
 
 |------|------|------|
 
-| **2A** | VM、申請人身分、異常對齊 | ✅ |
-| **2B** | Excel Role/Application、匯出測試 | ✅ |
-| **3** | CI、AD 修復、payload 契約、`workflow:ddp` | ✅ |
+| **4** | SharePoint、排程、`workflow:ddp` 文件 | 🟡 [`phase-4-todo`](superpowers/plans/2026-06-02-phase-4-todo.md) |
+
+| **2A–3** | VM／身分／Excel／CI／AD | ✅ 已合併 `master` |
 
 詳見 [phase-2-todo](superpowers/plans/2026-06-02-phase-2-todo.md)、[phase-3-todo](superpowers/plans/2026-06-02-phase-3-todo.md)。
 
@@ -104,7 +104,7 @@
 
 | 工程 | CI、vite 測試逾時 | ⬜ → Phase 3 |
 
-| 營運 | SharePoint、排程 | ⬜ → Phase 4 |
+| 營運 | SharePoint、排程 | 🟡 → Phase 4（進行中） |
 
 | 平台 | DB 內容總表（0602） | ⬜ → Track B |
 
@@ -135,6 +135,8 @@
 | **2026-06-02** | **Phase 2A** | VM/身分/異常、`abnormalFlags.ts`、`phase2aIdentityAndAbnormal.test.ts` |
 | **2026-06-02** | **Phase 2B** | Zentera Role/Application/User Roles、`phase2bZenteraExport.test.ts` |
 | **2026-06-02** | **Phase 3** | CI、helpdeskVitePlugin、mojibake、effective AD account、`workflow:ddp` |
+| **2026-06-02** | **合併 master** | Phase 2A/2B/3 → `ec626d9`；遠端 `origin` bundle 已更新 |
+| **2026-06-02** | **Phase 4 啟動** | `feat/phase-4-ops`、SharePoint CLI、排程 `.ps1` |
 
 
 

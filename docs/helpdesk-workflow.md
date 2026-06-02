@@ -77,6 +77,26 @@ pnpm workflow:ddp -- --count=25 --output=./ddp_ticket_maintain.xlsx
 
 Requires a valid Helpdesk session (`pnpm auth:login`) and LDAP reachability for enrich.
 
+### Windows Task Scheduler (batch)
+
+Run the DDP workflow without the UI on a schedule:
+
+```powershell
+# From repo root (adjust paths for your machine)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-ddp-workflow.ps1 -Count 25
+```
+
+Logs are written under `logs/ddp-workflow-*.log`. In Task Scheduler, set **Start in** to the repo root and use the same command; run under a domain account with Helpdesk session + LDAP access.
+
+### SharePoint download (optional)
+
+Legacy Python `fetch_sharepoint_file.py` is ported to TypeScript. Copy `config/sharepoint.example.yaml` to `config/sharepoint.yaml`. First run opens a browser for manual login and saves `sp_state.json`.
+
+```bash
+pnpm sharepoint:fetch
+pnpm sharepoint:fetch -- --config=config/sharepoint.yaml
+```
+
 Progress and remaining work: [`docs/PROGRESS.md`](PROGRESS.md).
 
 ## CLI fetch helper

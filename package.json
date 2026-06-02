@@ -7,7 +7,8 @@
     "fetch:tickets": "tsx server/fetchTicketsCli.ts",
     "auth:login": "tsx server/helpdeskLoginCli.ts",
     "export:excel": "tsx server/exportDdpExcelCli.ts",
-    "workflow:ddp": "tsx server/workflowDdpCli.ts"
+    "workflow:ddp": "tsx server/workflowDdpCli.ts",
+    "sharepoint:fetch": "tsx server/sharepointFetchCli.ts"
   },
   "dependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260521.1",

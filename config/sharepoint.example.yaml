@@ -1,0 +1,7 @@
+# SharePoint file download (legacy: fetch_sharepoint_file.py)
+siteUrl: https://deltao365.sharepoint.com/sites/DDP125
+fileUniqueId: 3EBC0414-BB1C-4788-A97F-8EB7B78F889F
+outputFile: VM_PhaseI_Rollout_Schedule.xlsx
+stateFile: IT工單(不可用，僅供參考)/sp_state.json
+# First run without sp_state.json opens a browser for manual login (headless ignored).
+headless: true
