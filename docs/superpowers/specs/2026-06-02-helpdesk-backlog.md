@@ -2,7 +2,8 @@
 
 > **狀態**：Living document  
 > **最後更新**：2026-06-02（Phase 1 結案確認；有效執行清單見 phase-2-todo）  
-> **目前只追蹤 Phase 2：** [`plans/2026-06-02-phase-2-todo.md`](../plans/2026-06-02-phase-2-todo.md)
+> **Track B（平台映射 DB）：** [`plans/2026-06-03-platform-track-b-plan.md`](../plans/2026-06-03-platform-track-b-plan.md)  
+> **Phase 2–4（工單 Web）：** 見各 phase todo；主線 Phase 2A–3 已合併 `master`
 > **對應開發計劃**：[`plans/2026-06-02-helpdesk-development-roadmap.md`](../plans/2026-06-02-helpdesk-development-roadmap.md)  
 > **進度儀表板**：[`docs/PROGRESS.md`](../../PROGRESS.md)
 
@@ -73,11 +74,16 @@
 
 ### 2.6 平台線（Track B，與工單 Web 分軌）
 
+**Spec：** [`2026-06-03-platform-mapping-db-export.md`](2026-06-03-platform-mapping-db-export.md) · **Contract：** [`fixtures/mapping-export-schema.json`](../fixtures/mapping-export-schema.json)
+
 | ID | 優先級 | 需求 | 現況 | 驗收標準 |
 |----|--------|------|------|----------|
-| **REQ-PLAT-001** | P2 | **DB 維護內容總表**（`0602.md`） | ⬜ | ERD + migration + 種子資料策略 |
-| **REQ-PLAT-002** | P3 | SQLite 批次：匯入 AD Excel + 3× Zentera CSV | 🔮 | 對齊 `platform_requirements_draft.md` 第一版 |
-| **REQ-PLAT-003** | P3 | 取代 `ddp_analysis.ipynb` 產出 `ad_user_vm_mapping.xlsx` | 🔮 | 批次 API + 下載 |
+| **REQ-PLAT-001** | P1 | **`mapping_row` DB**（語意 1:1 `ad_user_vm_mapping.xlsx`） | 🟡 spec 完成 | migration 欄位 = 契約 `dbColumn` |
+| **REQ-PLAT-002** | P1 | 匯入 + 正規化 + 映射 pipeline（對齊 notebook） | ⬜ | 同來源重跑結果一致 |
+| **REQ-PLAT-003** | P0 | **匯出契約** + serializer + golden 測試 | 🟡 JSON + plan B0 | `mapping-export-schema.json` 驅動匯出 |
+| **REQ-PLAT-004** | P1 | 映射 xlsx/csv 匯出 CLI/API | ⬜ | 表頭/順序/儲存格型別對齊契約 |
+| **REQ-PLAT-005** | P2 | Published batch 查詢 API | ⬜ | 供 UI / enrich 讀取 |
+| **REQ-PLAT-006** | P2 | Helpdesk 工單匯出共用 `mappingFieldId` | ⬜ | `buildDdpExcelRows` 與平台同一 transform |
 
 ---
 
@@ -115,7 +121,7 @@
 | REQ-AD-001, REQ-AD-002, REQ-AD-003 | **Phase 3** |
 | REQ-ENG-001, REQ-ENG-002, REQ-ENG-003 | **Phase 3**（可並行） |
 | REQ-OPS-001～003 | **Phase 4**（可選） |
-| REQ-PLAT-001～003 | **Track B** |
+| REQ-PLAT-001～006 | **Track B**（[`2026-06-03-platform-track-b-plan.md`](../plans/2026-06-03-platform-track-b-plan.md)） |
 
 ---
 

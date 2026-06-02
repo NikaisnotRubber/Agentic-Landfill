@@ -1,5 +1,9 @@
 # AD Group x Zentera 平台化需求草案
 
+> **實作優先 spec（DB + 匯出契約）：** [`docs/superpowers/specs/2026-06-03-platform-mapping-db-export.md`](../../docs/superpowers/specs/2026-06-03-platform-mapping-db-export.md)  
+> **開發計劃：** [`docs/superpowers/plans/2026-06-03-platform-track-b-plan.md`](../../docs/superpowers/plans/2026-06-03-platform-track-b-plan.md)  
+> **欄位契約 JSON：** [`docs/superpowers/fixtures/mapping-export-schema.json`](../../docs/superpowers/fixtures/mapping-export-schema.json)
+
 ## 1. 背景
 
 目前流程由兩段資料來源與一段 notebook 整併組成：

@@ -2,9 +2,10 @@
 
 
 
-> **最後更新**：2026-06-02（**Phase 3 已合併 `master`**；**Phase 4 開發中**）  
-> **開發分支：** `feat/phase-4-ops`（自 `master` @ `ec626d9`）  
-> **目前請勾選：** [`docs/superpowers/plans/2026-06-02-phase-4-todo.md`](superpowers/plans/2026-06-02-phase-4-todo.md)  
+> **最後更新**：2026-06-03（**Track B spec/plan 已建立**）  
+> **平台開發分支：** `feat/platform-mapping-db-export`（自 `master`）  
+> **工單 Phase 4 分支：** `feat/phase-4-ops`（可並行）  
+> **目前請勾選：** [`docs/superpowers/plans/2026-06-03-platform-track-b-plan.md`](superpowers/plans/2026-06-03-platform-track-b-plan.md)  
 > **分支規則：** [`docs/superpowers/plans/2026-06-02-branch-workflow.md`](superpowers/plans/2026-06-02-branch-workflow.md)  
 > **維護方式**：見根目錄 [`AGENTS.md`](../AGENTS.md)。
 
@@ -66,7 +67,16 @@
 
 
 
-## 目前進行中：Phase 4（營運批次）
+## 目前進行中：Track B（映射 DB + 匯出契約）
+
+| 階段 | 內容 | 文件 |
+|------|------|------|
+| **B0–B6** | `mapping_row`、匯出契約、pipeline、匯出、API、工單合一 | [`platform-track-b-plan`](superpowers/plans/2026-06-03-platform-track-b-plan.md) |
+| **Spec** | DB ≈ Excel 列；匯出細粒度對齊 | [`platform-mapping-db-export`](superpowers/specs/2026-06-03-platform-mapping-db-export.md) |
+
+---
+
+## Phase 4（營運批次，可並行）
 
 
 
@@ -106,7 +116,7 @@
 
 | 營運 | SharePoint、排程 | 🟡 → Phase 4（進行中） |
 
-| 平台 | DB 內容總表（0602） | ⬜ → Track B |
+| 平台 | DB + 匯出契約（0602） | 🟡 spec/plan → **Track B 開發中** |
 
 
 
@@ -137,6 +147,7 @@
 | **2026-06-02** | **Phase 3** | CI、helpdeskVitePlugin、mojibake、effective AD account、`workflow:ddp` |
 | **2026-06-02** | **合併 master** | Phase 2A/2B/3 → `ec626d9`；遠端 `origin` bundle 已更新 |
 | **2026-06-02** | **Phase 4 啟動** | `feat/phase-4-ops`、SharePoint CLI、排程 `.ps1` |
+| **2026-06-03** | **Track B 規格** | `mapping-export-schema.json`、platform spec、B0–B6 plan |
 
 
 
@@ -162,5 +173,8 @@
 | [vm-lookup spec 草稿](superpowers/specs/2026-06-02-vm-lookup-and-identity.md) | 2A 決策 D1/D2 |
 
 | [helpdesk-workflow.md](helpdesk-workflow.md) | 操作說明 |
+| [**platform-track-b-plan**](superpowers/plans/2026-06-03-platform-track-b-plan.md) | Track B 勾選清單 |
+| [platform-mapping spec](superpowers/specs/2026-06-03-platform-mapping-db-export.md) | 映射 DB + 匯出契約 |
+| [mapping-export-schema.json](superpowers/fixtures/mapping-export-schema.json) | 欄位契約（機器可讀） |
 
 
