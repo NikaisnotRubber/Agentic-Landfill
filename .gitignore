@@ -22,6 +22,11 @@ data/
 **/~$*.xlsx
 tests/fixtures/platform-batch/test.db
 tests/fixtures/platform-batch/out.xlsx
+tests/fixtures/platform-api/test.db
+tests/fixtures/platform-batch/lookup-test.db
+tests/fixtures/platform-batch/out.csv
+tests/fixtures/platform-batch/out.xlsx
+tests/fixtures/platform-batch/groups_excluded.xlsx
 IT工單(不可用，僅供參考)/delta_sso_state.json
 IT工單(不可用，僅供參考)/sp_state.json
 AD 群組/build/
