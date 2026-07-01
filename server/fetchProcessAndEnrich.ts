@@ -5,11 +5,18 @@ import {
   detectNewTickets as detectNewTicketsImpl,
 } from "./ddp/newTicketTracker";
 import { processDdpTickets as processDdpTicketsImpl } from "./ddp/processDdpTickets";
+import type { ProcessedDdpRow } from "./ddp/types";
 import { fetchTickets as fetchTicketsImpl } from "./fetchTickets";
+import { openMigratedPlatformDatabase } from "../platform/db/database";
+import {
+  shouldSyncTicketsToMappingDb,
+  upsertMappingFromProcessedRows,
+} from "../platform/sync/upsertMappingFromProcessed";
 import type {
   FetchTicketsOptions,
   TicketFetchResult,
   TicketFetchSuccess,
+  TicketRecord,
 } from "./types";
 
 export type FetchProcessOptions = {
@@ -25,6 +32,30 @@ type FetchProcessAndEnrichDeps = {
   createLookupClient?: typeof createAdLookupClient;
   createTrackerDeps?: typeof createDefaultTrackerDeps;
 };
+
+function mergeAdIntoProcessedRows(
+  tickets: TicketRecord[],
+  rows: ProcessedDdpRow[],
+): ProcessedDdpRow[] {
+  const ticketsById = new Map(tickets.map((ticket) => [ticket.id, ticket]));
+
+  return rows.map((row) => {
+    const ticket = ticketsById.get(row.ticketId);
+    const ad = ticket?.ad;
+    if (!ad || ad.status !== "enriched") {
+      return row;
+    }
+
+    return {
+      ...row,
+      adAccount: ad.adAccount || row.adAccount,
+      adName: ad.displayName || row.adName,
+      mail: ad.mail || row.mail,
+      bu: ad.bu || row.bu,
+      abnormalFlags: row.abnormalFlags.filter((flag) => flag !== "missing-ad-account"),
+    };
+  });
+}
 
 export async function attachProcessedPayload(
   fetched: TicketFetchSuccess,
@@ -55,6 +86,14 @@ export async function attachProcessedPayload(
   }
 
   const processed = processDdpTickets(fetched.tickets, newTicketIds, trackerSummary);
+  if (processed.rows.length > 0 && shouldSyncTicketsToMappingDb()) {
+    const db = openMigratedPlatformDatabase();
+    try {
+      processed.summary.mappingSync = upsertMappingFromProcessedRows(db, processed.rows);
+    } finally {
+      db.close();
+    }
+  }
 
   return {
     ...fetched,
@@ -63,25 +102,42 @@ export async function attachProcessedPayload(
   };
 }
 
-async function enrichFetchedTickets(
-  fetched: TicketFetchSuccess,
-  deps: FetchProcessAndEnrichDeps,
-): Promise<TicketFetchSuccess> {
+export async function fetchProcessAndEnrich(
+  options: FetchTicketsOptions,
+  processOptions: FetchProcessOptions,
+  deps: FetchProcessAndEnrichDeps = {},
+): Promise<TicketFetchResult> {
+  const fetchTickets = deps.fetchTickets ?? fetchTicketsImpl;
   const enrichTicketsWithAd = deps.enrichTicketsWithAd ?? enrichTicketsWithAdImpl;
   const createLookupClient = deps.createLookupClient ?? createAdLookupClient;
+
+  const fetched = await fetchTickets(options);
+  if (!fetched.ok) {
+    return fetched;
+  }
+
+  let result = await attachProcessedPayload(fetched, processOptions, deps);
+
+  if (!processOptions.enrich || result.tickets.length === 0) {
+    return result;
+  }
+
   const lookupClient = createLookupClient();
 
   try {
-    const enriched = await enrichTicketsWithAd(fetched.tickets, lookupClient);
-    return {
-      ...fetched,
+    const enriched = await enrichTicketsWithAd(result.tickets, lookupClient);
+    const processedRows = mergeAdIntoProcessedRows(enriched.tickets, result.processedRows ?? []);
+
+    result = {
+      ...result,
       count: enriched.tickets.length,
       tickets: enriched.tickets,
       adSummary: enriched.summary,
+      processedRows,
     };
   } catch (error) {
-    return {
-      ...fetched,
+    result = {
+      ...result,
       adWarning: error instanceof Error ? error.message : "AD enrichment failed",
     };
   } finally {
@@ -91,27 +147,6 @@ async function enrichFetchedTickets(
       // Preserve fetch/process/enrichment result even if LDAP cleanup fails.
     }
   }
+
+  return result;
 }
-
-export async function fetchProcessAndEnrich(
-  options: FetchTicketsOptions,
-  processOptions: FetchProcessOptions,
-  deps: FetchProcessAndEnrichDeps = {},
-): Promise<TicketFetchResult> {
-  const fetchTickets = deps.fetchTickets ?? fetchTicketsImpl;
-
-  const fetched = await fetchTickets(options);
-  if (!fetched.ok) {
-    return fetched;
-  }
-
-  let payload: TicketFetchSuccess = fetched;
-
-  if (processOptions.enrich && payload.tickets.length > 0) {
-    payload = await enrichFetchedTickets(payload, deps);
-  }
-
-  return attachProcessedPayload(payload, processOptions, deps);
-}
-
-export { rebuildProcessedPayload, mergeAdIntoProcessedRows } from "./ddp/rebuildProcessedPayload";

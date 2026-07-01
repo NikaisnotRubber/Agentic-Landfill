@@ -1,5 +1,3 @@
-import { deriveRoleCodeFromVmHostname } from "../../server/zentera/deriveRoleFromVmHostname";
-
 export function inferRoleFromVmHostname(vmHostname: string): string {
-  return deriveRoleCodeFromVmHostname(vmHostname);
+  return /([A-Za-z]{2})\d+$/.exec(vmHostname.trim())?.[1]?.toUpperCase() ?? "";
 }

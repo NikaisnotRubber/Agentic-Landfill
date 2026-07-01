@@ -88,6 +88,7 @@ async function executeTicketFetchWithBrowser(
 function normalizeFetchSuccess(
   payload: unknown,
   technician?: string,
+  ddpOnly = true,
 ): TicketFetchSuccess {
   const requests = (payload as { requests?: unknown[] }).requests as unknown;
   if (!Array.isArray(requests)) {
@@ -95,15 +96,15 @@ function normalizeFetchSuccess(
   }
 
   const technicianName = technician?.trim();
+  const cleanedTickets = cleanTicketRecords(requests);
+  const filteredBySubject = ddpOnly ? filterTicketsForDdp(cleanedTickets) : cleanedTickets;
 
-  const tickets = filterTicketsForDdp(cleanTicketRecords(requests)).filter(
-    (ticket) => {
-      if (!technicianName) {
-        return true;
-      }
-      return ticket.technician.trim() === technicianName;
-    },
-  );
+  const tickets = filteredBySubject.filter((ticket) => {
+    if (!technicianName) {
+      return true;
+    }
+    return ticket.technician.trim() === technicianName;
+  });
 
   return {
     ok: true,
@@ -175,14 +176,18 @@ export async function fetchTickets(
         return normalizeHttpFailure(secondPayload);
       }
 
-      return normalizeFetchSuccess(secondPayload.json, options.technician);
+      return normalizeFetchSuccess(
+        secondPayload.json,
+        options.technician,
+        options.ddpOnly ?? true,
+      );
     }
 
     if (firstPayload.httpStatus >= 400) {
       return normalizeHttpFailure(firstPayload);
     }
 
-    return normalizeFetchSuccess(firstPayload.json, options.technician);
+    return normalizeFetchSuccess(firstPayload.json, options.technician, options.ddpOnly ?? true);
   } catch (error) {
     return {
       ok: false,

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { validateMappingExportSchema } from "./validateMappingExportSchema";
+
 export type MappingExportTransform = {
   trim?: boolean;
   uppercase?: boolean;
@@ -22,6 +24,9 @@ export type MappingExportColumn = {
   transform?: MappingExportTransform;
   readonly?: boolean;
   inTicketWorkbook?: boolean;
+  decisionId?: string;
+  decision?: string;
+  ticketExportDefault?: string;
 };
 
 export type MappingExportSchema = {
@@ -40,27 +45,10 @@ export async function loadMappingExportSchema(
   schemaPath = DEFAULT_SCHEMA_PATH,
 ): Promise<MappingExportSchema> {
   const raw = await readFile(schemaPath, "utf8");
-  const parsed = JSON.parse(raw) as MappingExportSchema;
-
-  if (!parsed.columns?.length) {
-    throw new Error("mapping-export-schema.json must define columns[]");
-  }
-
-  const headers = new Set<string>();
-  const dbColumns = new Set<string>();
-  for (const column of parsed.columns) {
-    if (headers.has(column.excelHeader)) {
-      throw new Error(`Duplicate excelHeader: ${column.excelHeader}`);
-    }
-    if (dbColumns.has(column.dbColumn)) {
-      throw new Error(`Duplicate dbColumn: ${column.dbColumn}`);
-    }
-    headers.add(column.excelHeader);
-    dbColumns.add(column.dbColumn);
-  }
-
-  return parsed;
+  return validateMappingExportSchema(JSON.parse(raw) as MappingExportSchema);
 }
+
+export { validateMappingExportSchema } from "./validateMappingExportSchema";
 
 export function getMappingExcelHeaders(schema: MappingExportSchema): string[] {
   return schema.columns.map((column) => column.excelHeader);

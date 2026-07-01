@@ -27,7 +27,6 @@ export type TicketAdInfo = {
   mail: string;
   department: string;
   manager: string;
-  managerAccount: string;
   employeeId: string;
   bg: string;
   bu: string;
@@ -70,11 +69,10 @@ export type FetchTicketsOptions = {
   filterId?: string;
   stateFile?: string;
   baseUrl?: string;
+  ddpOnly?: boolean;
 };
 
 export type TicketEnrichmentPayload = {
   source: TicketFetchSuccess["source"];
   tickets: TicketRecord[];
-  processedRows?: ProcessedDdpRow[];
-  processedSummary?: ProcessedDdpSummary;
 };

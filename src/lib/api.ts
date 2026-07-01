@@ -1,13 +1,8 @@
-import type {
-  ProcessedDdpRow,
-  TicketEnrichmentPayload,
-  TicketFetchResult,
-  TicketRecord,
-} from "./types";
+import type { TicketEnrichmentPayload, TicketFetchResult } from "./types";
+import { requestJson } from "./http";
 
 export async function loadSampleTickets(): Promise<TicketFetchResult> {
-  const response = await fetch("/api/tickets/sample");
-  return response.json();
+  return requestJson<TicketFetchResult>("/api/tickets/sample");
 }
 
 export async function loadLiveTickets(payload: {
@@ -16,14 +11,7 @@ export async function loadLiveTickets(payload: {
   filterId?: string;
   stateFile?: string;
 }): Promise<TicketFetchResult> {
-  const response = await fetch("/api/tickets/fetch", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  return response.json();
+  return requestJson<TicketFetchResult>("/api/tickets/fetch", { method: "POST", body: payload });
 }
 
 export async function fetchAndEnrichLiveTickets(payload: {
@@ -32,46 +20,14 @@ export async function fetchAndEnrichLiveTickets(payload: {
   filterId?: string;
   stateFile?: string;
 }): Promise<TicketFetchResult> {
-  const response = await fetch("/api/tickets/fetch-and-enrich", {
+  return requestJson<TicketFetchResult>("/api/tickets/fetch-and-enrich", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+    body: payload,
   });
-  return response.json();
 }
 
 export async function enrichCurrentTickets(
   payload: TicketEnrichmentPayload,
 ): Promise<TicketFetchResult> {
-  const response = await fetch("/api/tickets/enrich-ad", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  return response.json();
-}
-
-export async function exportTicketsExcel(payload: {
-  tickets: TicketRecord[];
-  processedRows?: ProcessedDdpRow[];
-  filename?: string;
-}): Promise<Blob> {
-  const response = await fetch("/api/tickets/export-excel", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(errorBody?.error ?? `Excel export failed (${response.status})`);
-  }
-
-  return response.blob();
+  return requestJson<TicketFetchResult>("/api/tickets/enrich-ad", { method: "POST", body: payload });
 }

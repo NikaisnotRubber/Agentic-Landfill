@@ -22,6 +22,11 @@ export type ProcessedDdpSummary = {
   totalRows: number;
   abnormalRowCount: number;
   newTicketCount: number;
+  mappingSync?: {
+    attempted: number;
+    upserted: number;
+    skipped: number;
+  };
   trackerWarning?: string;
   latestSeenId?: string;
   previousSeenId?: string;

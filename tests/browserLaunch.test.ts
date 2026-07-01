@@ -12,20 +12,22 @@ describe("resolveBrowserLaunchOptions", () => {
     ).toEqual({ executablePath: "/custom/chrome" });
   });
 
-  it("falls back to system google chrome when available", () => {
+  it("uses Playwright-managed Chromium by default", () => {
+    expect(
+      resolveBrowserLaunchOptions({
+        env: {},
+        exists: (target) => target === "/local/ms-playwright/chrome.exe",
+        playwrightExecutablePath: () => "/local/ms-playwright/chrome.exe",
+      }),
+    ).toEqual({ executablePath: "/local/ms-playwright/chrome.exe" });
+  });
+
+  it("does not fall back to system Chrome when Playwright browser is unavailable", () => {
     expect(
       resolveBrowserLaunchOptions({
         env: {},
         exists: (target) => target === "/usr/bin/google-chrome",
-      }),
-    ).toEqual({ executablePath: "/usr/bin/google-chrome" });
-  });
-
-  it("returns empty options when no browser override exists", () => {
-    expect(
-      resolveBrowserLaunchOptions({
-        env: {},
-        exists: () => false,
+        playwrightExecutablePath: () => "/missing/ms-playwright/chrome.exe",
       }),
     ).toEqual({});
   });

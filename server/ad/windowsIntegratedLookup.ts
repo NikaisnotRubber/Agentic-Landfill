@@ -11,15 +11,8 @@ export type IntegratedLookupArgs = {
   baseDn: string;
 };
 
-/**
- * PowerShell must emit UTF-8 JSON. Windows consoles default to cp950/cp936, which
- * mojibakes Chinese `cn` / manager values when Node reads stdout as UTF-8.
- * See IT工單(不可用，僅供參考)/README.md and fetch_ad_info.py (sys.stdout UTF-8).
- */
 const POWERSHELL_SCRIPT = `
 $ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-$OutputEncoding = [Console]::OutputEncoding
 Add-Type -AssemblyName System.DirectoryServices
 
 $searchRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$env:AD_LOOKUP_DC/$env:AD_LOOKUP_BASE_DN")
@@ -45,33 +38,53 @@ if ($null -eq $result) {
 }
 
 $props = $result.Properties
-$managerDn = if ($props['manager'].Count -gt 0) { [string]$props['manager'][0] } else { '' }
-$managerSamAccountName = ''
-if ($managerDn -like 'CN=*') {
-  $mgrSearcher = New-Object System.DirectoryServices.DirectorySearcher($searchRoot)
-  $mgrSearcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
-  $mgrSearcher.Filter = "(distinguishedName=$managerDn)"
-  [void]$mgrSearcher.PropertiesToLoad.Add('sAMAccountName')
-  $mgrResult = $mgrSearcher.FindOne()
-  if ($null -ne $mgrResult -and $mgrResult.Properties['samaccountname'].Count -gt 0) {
-    $managerSamAccountName = [string]$mgrResult.Properties['samaccountname'][0]
-  }
+
+function Convert-LdapString([object]$value) {
+  if ($null -eq $value) { return '' }
+  return [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes([string]$value))
 }
 
 $data = [ordered]@{
-  sAMAccountName = if ($props['samaccountname'].Count -gt 0) { [string]$props['samaccountname'][0] } else { '' }
-  cn = if ($props['cn'].Count -gt 0) { [string]$props['cn'][0] } else { '' }
-  mail = if ($props['mail'].Count -gt 0) { [string]$props['mail'][0] } else { '' }
-  department = if ($props['department'].Count -gt 0) { [string]$props['department'][0] } else { '' }
-  manager = $managerDn
-  managerSamAccountName = $managerSamAccountName
-  extensionAttribute15 = if ($props['extensionattribute15'].Count -gt 0) { [string]$props['extensionattribute15'][0] } else { '' }
-  extensionAttribute1 = if ($props['extensionattribute1'].Count -gt 0) { [string]$props['extensionattribute1'][0] } else { '' }
-  extensionAttribute2 = if ($props['extensionattribute2'].Count -gt 0) { [string]$props['extensionattribute2'][0] } else { '' }
+  __encoding = 'utf16le-base64'
+  sAMAccountName = if ($props['samaccountname'].Count -gt 0) { Convert-LdapString $props['samaccountname'][0] } else { '' }
+  cn = if ($props['cn'].Count -gt 0) { Convert-LdapString $props['cn'][0] } else { '' }
+  mail = if ($props['mail'].Count -gt 0) { Convert-LdapString $props['mail'][0] } else { '' }
+  department = if ($props['department'].Count -gt 0) { Convert-LdapString $props['department'][0] } else { '' }
+  manager = if ($props['manager'].Count -gt 0) { Convert-LdapString $props['manager'][0] } else { '' }
+  extensionAttribute15 = if ($props['extensionattribute15'].Count -gt 0) { Convert-LdapString $props['extensionattribute15'][0] } else { '' }
+  extensionAttribute1 = if ($props['extensionattribute1'].Count -gt 0) { Convert-LdapString $props['extensionattribute1'][0] } else { '' }
+  extensionAttribute2 = if ($props['extensionattribute2'].Count -gt 0) { Convert-LdapString $props['extensionattribute2'][0] } else { '' }
 }
 
 $data | ConvertTo-Json -Compress
 `;
+
+function decodeIntegratedLookupPayload(parsed: Record<string, unknown>): Record<string, unknown> {
+  if (parsed.__encoding !== "utf16le-base64") {
+    return parsed;
+  }
+
+  return Object.fromEntries(
+    Object.entries(parsed)
+      .filter(([key]) => key !== "__encoding")
+      .map(([key, value]) => [
+        key,
+        typeof value === "string" && value
+          ? Buffer.from(value, "base64").toString("utf16le")
+          : "",
+      ]),
+  );
+}
+
+export function parseWindowsIntegratedLookupOutput(stdout: string): NormalizedAdEntry | null {
+  const normalizedOutput = stdout.trim();
+  if (!normalizedOutput || normalizedOutput === "{}") {
+    return null;
+  }
+
+  const parsed = JSON.parse(normalizedOutput) as Record<string, unknown>;
+  return normalizeAdEntry(decodeIntegratedLookupPayload(parsed));
+}
 
 export async function runWindowsIntegratedLookup({
   account,
@@ -84,7 +97,7 @@ export async function runWindowsIntegratedLookup({
 
   const { stdout } = await execFileAsync(
     "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-OutputEncoding", "UTF8", "-Command", POWERSHELL_SCRIPT],
+    ["-NoProfile", "-NonInteractive", "-Command", POWERSHELL_SCRIPT],
     {
       env: {
         ...process.env,
@@ -92,16 +105,9 @@ export async function runWindowsIntegratedLookup({
         AD_LOOKUP_DC: dcHost,
         AD_LOOKUP_BASE_DN: baseDn,
       },
-      encoding: "utf8",
       maxBuffer: 1024 * 1024,
     },
   );
 
-  const normalizedOutput = stdout.trim();
-  if (!normalizedOutput || normalizedOutput === "{}") {
-    return null;
-  }
-
-  const parsed = JSON.parse(normalizedOutput) as Record<string, unknown>;
-  return normalizeAdEntry(parsed);
+  return parseWindowsIntegratedLookupOutput(stdout);
 }

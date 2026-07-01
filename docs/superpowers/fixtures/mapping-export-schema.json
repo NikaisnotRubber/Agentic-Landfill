@@ -197,7 +197,8 @@
       "readonly": true,
       "inTicketWorkbook": false,
       "decisionId": "D-TICKET-01",
-      "notes": "Present in ad_user_vm_mapping.xlsx; not in ddp_ticket_maintain.xlsx today. Add ticket column in PLAT-006 if product confirms."
+      "decision": "excluded",
+      "notes": "B6: remains mapping-export only; ddp_ticket_maintain.xlsx does not add Host IP."
     },
     {
       "excelHeader": "NEW VM",

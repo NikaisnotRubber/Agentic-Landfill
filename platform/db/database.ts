@@ -27,9 +27,23 @@ export function openPlatformDatabase(databasePath = resolveDatabasePath()): Plat
   return db;
 }
 
+function isDuplicateColumnError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.includes("duplicate column name") ||
+      error.message.includes("already exists"))
+  );
+}
+
 export function migratePlatformDatabase(db: PlatformDatabase): void {
   for (const sql of PLATFORM_MIGRATIONS) {
-    db.exec(sql);
+    try {
+      db.exec(sql);
+    } catch (error) {
+      if (!isDuplicateColumnError(error)) {
+        throw error;
+      }
+    }
   }
 }
 

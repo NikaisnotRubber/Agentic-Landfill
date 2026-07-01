@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 
 import type { PlatformDatabase } from "../db/database";
 import { runInTransaction } from "../db/transaction";
-import { parseCsvRecords } from "../../server/zentera/parseCsv";
+import { parseCsvRecords } from "../io/csv";
 import { normalizeAdAccount } from "./normalizeAccount";
 import { expandRoleUsersFromCell } from "./expandRoleUsers";
 import { parseAdGroupsXlsx } from "./parseAdGroupsXlsx";

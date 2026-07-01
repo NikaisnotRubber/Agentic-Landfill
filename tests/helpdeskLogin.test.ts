@@ -35,10 +35,10 @@ function createLoginPageMock() {
       if (selector === "#password" || selector === 'input[name="j_password"]') {
         return password;
       }
-      if (selector === 'select[name="domain"]') {
+      if (selector === "#domain_select" || selector === 'select[name="domain"]') {
         return domain;
       }
-      if (selector === "#loginSDPage") {
+      if (selector === "#loginSDPage" || selector === 'button[name="loginButton"]') {
         return submit;
       }
       throw new Error(`Unexpected locator selector: ${selector}`);
@@ -93,19 +93,14 @@ describe("performHelpdeskLogin", () => {
   });
 
   it("throws a targeted error when the username field cannot be located", async () => {
+    const missing = createResolvableLocator();
+    missing.waitFor = vi.fn().mockRejectedValue(new Error("missing locator"));
+
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       waitForLoadState: vi.fn().mockResolvedValue(undefined),
-      locator: vi.fn(() => {
-        const missing = createLocator();
-        missing.waitFor = vi.fn().mockRejectedValue(new Error("missing locator"));
-        return { or: vi.fn(() => missing) };
-      }),
-      getByRole: vi.fn(() => {
-        const missing = createLocator();
-        missing.waitFor = vi.fn().mockRejectedValue(new Error("missing locator"));
-        return { or: vi.fn(() => missing) };
-      }),
+      locator: vi.fn(() => missing),
+      getByRole: vi.fn(() => missing),
     };
 
     await expect(

@@ -1,7 +1,7 @@
 import { access } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 
-import { parseCsvRecords } from "../../server/zentera/parseCsv";
+import { parseCsvRecords } from "../io/csv";
 import type { BatchFileSet } from "./importBatchFiles";
 
 export type BatchFileValidationResult = { ok: true } | { ok: false; error: string };

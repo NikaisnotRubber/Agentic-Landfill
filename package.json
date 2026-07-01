@@ -1,18 +1,19 @@
 {
-  "packageManager": "pnpm@11.1.2",
+  "packageManager": "pnpm@11.6.0+sha512.9a36518224080c6fe5165afdcfe79bfa118c29be703f3f462b1e32efe1e98e47e8750b148e08286250aad4113cc7993ca413c4e2cd447752708c2ee5751bc95f",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
     "fetch:tickets": "tsx server/fetchTicketsCli.ts",
     "auth:login": "tsx server/helpdeskLoginCli.ts",
-    "export:excel": "tsx server/exportDdpExcelCli.ts",
-    "workflow:ddp": "tsx server/workflowDdpCli.ts",
-    "sharepoint:fetch": "tsx server/sharepointFetchCli.ts",
-    "plat:run": "tsx platform/cli/platRunCli.ts"
+    "db:migrate": "tsx server/db/sqlite.ts --migrate",
+    "vm-master:import": "tsx scripts/import-vm-master.ts",
+    "vm-master:sync-helpdesk": "tsx scripts/sync-helpdesk-vm-master.ts"
   },
   "dependencies": {
+    "@tanstack/vue-table": "^8.21.3",
     "@typescript/native-preview": "^7.0.0-dev.20260521.1",
+    "csv-parse": "^5.6.0",
     "exceljs": "^4.4.0",
     "ldapts": "^8.1.8",
     "playwright": "^1.60.0",

@@ -42,6 +42,7 @@ describe("createAdLookupClient", () => {
         "extensionAttribute1",
         "extensionAttribute2",
       ],
+      explicitBufferAttributes: ["cn", "manager"],
     });
     expect(result?.displayName).toBe("吳家驊");
 

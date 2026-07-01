@@ -3,6 +3,8 @@ import type { PlatformDatabase } from "../db/database";
 import { getPublishedBatchId } from "../batch/batchService";
 import { serializeMappingRowRecord } from "../export/serializeMappingRow";
 import type { MappingRow } from "../export/types";
+import { LIVE_TICKET_BATCH_ID } from "../sync/constants";
+import { shouldSyncTicketsToMappingDb } from "../sync/upsertMappingFromProcessed";
 
 export type PublishedBatchMetadata = {
   batchId: string;
@@ -18,6 +20,13 @@ export type MappingRowQueryResult = {
   limit: number;
   offset: number;
   rows: Record<string, string>[];
+};
+
+export type MappingSyncStatus = {
+  batchId: string;
+  rowCount: number;
+  lastUpdatedAt: string | null;
+  platformSyncTicketsEnabled: boolean;
 };
 
 export function getPublishedBatchMetadata(db: PlatformDatabase): PublishedBatchMetadata | null {
@@ -78,6 +87,25 @@ export function listMappingBatches(
     publishedAt: batch.published_at,
     rowCount: batch.row_count,
   }));
+}
+
+export function getLiveTicketSyncStatus(db: PlatformDatabase): MappingSyncStatus {
+  const row = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS row_count, MAX(updated_at) AS last_updated_at
+      FROM mapping_row
+      WHERE batch_id = ? AND source_kind = 'ticket'
+    `,
+    )
+    .get(LIVE_TICKET_BATCH_ID) as { row_count: number; last_updated_at: string | null };
+
+  return {
+    batchId: LIVE_TICKET_BATCH_ID,
+    rowCount: row.row_count,
+    lastUpdatedAt: row.last_updated_at,
+    platformSyncTicketsEnabled: shouldSyncTicketsToMappingDb(),
+  };
 }
 
 export async function queryPublishedMappingRows(

@@ -25,8 +25,9 @@
 ### 1.3 與 Helpdesk 工單 Web 的邊界
 
 - **工單 Web（Track A）**：取票、Processed View、`ddp_ticket_maintain.xlsx`。
-- **映射平台（Track B）**：內容總表；**不把 tickets 匯入平台 V1**（沿用 `platform_requirements_draft.md` §13.1）。
-- 工單匯出中的映射欄位，應與本 spec 的 **`mappingFieldId`** 共用契約（未來 **PLAT-006**）。
+- **映射平台（Track B）**：**SQLite 總表為 SoT**；工單處理後 **增量 upsert** `mapping_row`（`source_kind=ticket`），見 [`2026-06-03-platform-ticket-incremental-sync.md`](2026-06-03-platform-ticket-incremental-sync.md)。
+- AD + Zentera 檔案仍以 **`pnpm plat:run`** 全量刷新 `source_kind=batch` 基底。
+- 工單匯出中的映射欄位，應與本 spec 的 **`mappingFieldId`** 共用契約（**PLAT-006**）。
 
 ## 2. 核心原則
 
@@ -75,7 +76,7 @@ mapping_row    ← 對外語意列（≈ Excel 一列）
 export         ← 依契約 serialize → xlsx / csv
 ```
 
-**資料庫：** 正式環境 **PostgreSQL**；本機開發可用 SQLite，但 migration 須與 PG 相容。
+**資料庫：** **SQLite only**（`node:sqlite` `DatabaseSync`，預設 `file:./data/platform.db`）。業務不複雜、與 Excel 匯入匯出適配性佳；見 ticket 增量 spec。
 
 ## 5. 匯出契約（Export Contract）
 
@@ -105,7 +106,7 @@ export         ← 依契約 serialize → xlsx / csv
 
 - 映射欄：契約中 `inTicketWorkbook: true` 的子集。
 - 工單專屬欄：`ticketOnlyColumns`（Ticket ID、異常、工單狀態）。
-- **D-TICKET-01**：是否在工單表新增 `Host IP` 欄 — 預設 **Phase B6 再決**，不阻塞 B0–B5。
+- **D-TICKET-01（已決）**：工單表**不新增** `Host IP`；僅 19 欄映射匯出含 `Host IP`，工單表仍為 `inTicketWorkbook: false` 子集 + `ticketOnlyColumns`。
 
 ## 6. 批次（batch）狀態機
 
@@ -130,19 +131,22 @@ export         ← 依契約 serialize → xlsx / csv
 | **REQ-PLAT-004** | 映射 xlsx/csv 匯出 API/CLI | §5、plan B4 |
 | **REQ-PLAT-005** | Published batch 查詢 API | §6、plan B5 |
 | **REQ-PLAT-006** | Helpdesk 匯出共用契約 | §5.4、plan B6 |
+| **REQ-PLAT-007** | 工單 Processed → `mapping_row` 增量 upsert | ticket incremental spec、plan B7 |
+| **REQ-PLAT-008** | SQLite 為唯一正式 DB | §4 |
+| **REQ-PLAT-009** | 工單→總表同步可觀測性（`mappingSync`） | [`2026-06-03-platform-mapping-sync-observability.md`](2026-06-03-platform-mapping-sync-observability.md)、plan B7.6 |
 
 ## 8. 明確排除（V1）
 
 - SharePoint 下載寫入映射（**REQ-OPS-001** 維持獨立可選）。
-- Tickets 進入映射 DB。
-- 即時 AD / Zentera API 抓檔。
+- 即時 AD / Zentera API 抓檔（仍為檔案匯入 + 工單增量）。
 - 完整審批工作流。
+- PostgreSQL / 多租戶分散式部署。
 
 ## 9. 待決策
 
 | ID | 問題 | 建議預設 |
 |----|------|----------|
-| D-TICKET-01 | 工單 Excel 是否加 `Host IP` | 延後 B6 |
+| D-TICKET-01 | 工單 Excel 是否加 `Host IP` | **否**（B6 已定） |
 | D-DB-01 | 程式目錄：`platform/` vs `Mapping ADGroup、Zentera/apps/` | `platform/` 於 repo 根（與 server/ 並列） |
 | D-DB-02 | 保留幾代 published/archived batch | 至少 3 代 |
 | D-MAIL-01 | 映射匯出是否自動補 `@deltaww.com` | 否（僅工單匯出補） |

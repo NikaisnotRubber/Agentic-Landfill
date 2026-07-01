@@ -27,16 +27,17 @@ export async function parseAdGroupsXlsx(filePath: string): Promise<AdMemberRow[]
       .slice(1)
       .map((value) => String(value ?? "").trim());
 
-    const indexOf = (name: string) => headers.findIndex((header) => header === name);
+    const indexOf = (...names: string[]) => headers.findIndex((header) => names.includes(header));
 
     const groupIdx = indexOf("群組");
+    const normalizedGroupIdx = groupIdx >= 0 ? groupIdx : indexOf("Group", "Group Name");
     const accountIdx = indexOf("AD Account");
     const cnIdx = indexOf("CN");
     const mailIdx = indexOf("Mail");
     const buIdx = indexOf("BU");
     const bgIdx = indexOf("BG");
 
-    if (groupIdx < 0 || accountIdx < 0) {
+    if (normalizedGroupIdx < 0 || accountIdx < 0) {
       continue;
     }
 
@@ -45,7 +46,7 @@ export async function parseAdGroupsXlsx(filePath: string): Promise<AdMemberRow[]
         return;
       }
 
-      const groupName = String(row.getCell(groupIdx + 1).value ?? "").trim();
+      const groupName = String(row.getCell(normalizedGroupIdx + 1).value ?? "").trim();
       const adAccount = String(row.getCell(accountIdx + 1).value ?? "").trim();
       if (!groupName || !adAccount) {
         return;

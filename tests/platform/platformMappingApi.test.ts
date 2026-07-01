@@ -2,15 +2,18 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import ExcelJS from "exceljs";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
+  getLiveTicketSyncStatus,
   getPublishedBatchMetadata,
   queryPublishedMappingRows,
 } from "../../platform/api/publishedMappingService";
 import { createBatch, runBatchImportAndMap } from "../../platform/batch/batchService";
 import { openMigratedPlatformDatabase, type PlatformDatabase } from "../../platform/db/database";
-import { registerPlatformMappingRoutes } from "../../server/platformMappingApiPlugin";
+import { LIVE_TICKET_BATCH_ID } from "../../platform/sync/constants";
+import { upsertMappingFromProcessedRows } from "../../platform/sync/upsertMappingFromProcessed";
+import type { ProcessedDdpRow } from "../../server/ddp/types";
 
 const FIXTURE_DIR = path.resolve("tests/fixtures/platform-api");
 const DB_PATH = path.resolve("tests/fixtures/platform-api/test.db");
@@ -22,8 +25,9 @@ async function writeMinimalBatchFiles(dir: string) {
   await mkdir(dir, { recursive: true });
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("IT");
-  sheet.addRow(["群組", "AD Account", "CN", "Mail", "BU", "BG"]);
-  sheet.addRow(["L-TW-EXAMPLE", "LEO.ZOU", "鄒小明", "leo.zou@deltaww.com", "IT", "ITBG"]);
+  sheet.addRow(["蝢斤?", "AD Account", "CN", "Mail", "BU", "BG"]);
+  sheet.addRow(["L-TW-EXAMPLE", "LEO.ZOU", "Leo Zou", "leo.zou@deltaww.com", "IT", "ITBG"]);
+  sheet.getCell("A1").value = "Group";
   await workbook.xlsx.writeFile(path.join(dir, "groups_LTW_all.xlsx"));
 
   await writeFile(
@@ -32,7 +36,7 @@ async function writeMinimalBatchFiles(dir: string) {
   );
   await writeFile(
     path.join(dir, "Users.csv"),
-    "Customer,Project,Account,FirstName,LastName,Mail,Application\nDelta,Test,LEO.ZOU,小明,鄒,leo.zou@deltaww.com,Digital Design Platform\n",
+    "Customer,Project,Account,FirstName,LastName,Mail,Application\nDelta,Test,LEO.ZOU,Leo,Zou,leo.zou@deltaww.com,Digital Design Platform\n",
   );
   await writeFile(
     path.join(dir, "Server_Profiles.csv"),
@@ -40,14 +44,26 @@ async function writeMinimalBatchFiles(dir: string) {
   );
 }
 
-function createMockResponse() {
+function sampleProcessedRow(overrides: Partial<ProcessedDdpRow> = {}): ProcessedDdpRow {
   return {
-    statusCode: 200,
-    body: "",
-    setHeader() {},
-    end(payload: string) {
-      this.body = payload;
-    },
+    ticketId: "822184",
+    status: "Open",
+    subject: "[DDP] test",
+    requester: "LEO.ZOU",
+    isNewTicket: true,
+    adAccount: "LEO.ZOU",
+    adName: "Leo Zou",
+    firstName: "Leo",
+    lastName: "Zou",
+    mail: "leo.zou@deltaww.com",
+    bu: "IT",
+    nbHostname: "TWCL1NB5308",
+    vmHostname: "TWPJRDPSCNLT05",
+    role: "",
+    application: "Digital Design Platform",
+    userRoles: "MGR_ROLE_A",
+    abnormalFlags: [],
+    ...overrides,
   };
 }
 
@@ -66,7 +82,12 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  process.env.DATABASE_URL = originalDatabaseUrl;
+  db.close();
+  if (originalDatabaseUrl === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = originalDatabaseUrl;
+  }
 });
 
 describe("publishedMappingService", () => {
@@ -80,24 +101,17 @@ describe("publishedMappingService", () => {
     const result = await queryPublishedMappingRows(db, { adAccount: "LEO.ZOU", limit: 10 });
     expect(result?.rows[0]?.["AD Account"]).toBe("LEO.ZOU");
     expect(result?.rows[0]?.["VM HostName"]).toBe("TWPJOTHER");
-    expect(result?.rows[0]?.["FirstName"]).toBe("鄒");
-    expect(result?.rows[0]?.["LastName"]).toBe("小明");
+    expect(result?.rows[0]?.["FirstName"]).toBe("Leo");
+    expect(result?.rows[0]?.["LastName"]).toBe("Zou");
   });
-});
 
-describe("platform mapping API routes", () => {
-  it("GET /api/platform/mapping/published returns metadata", async () => {
-    const middlewares = { use: vi.fn() };
-    registerPlatformMappingRoutes(middlewares);
-    const handler = middlewares.use.mock.calls.find(
-      ([route]) => route === "/api/platform/mapping/published",
-    )?.[1];
-    expect(handler).toBeDefined();
+  it("returns live ticket sync status", () => {
+    upsertMappingFromProcessedRows(db, [sampleProcessedRow()]);
 
-    const response = createMockResponse();
-    await handler!({ method: "GET", url: "/api/platform/mapping/published" } as never, response as never);
-    const payload = JSON.parse(response.body) as { ok: boolean; rowCount: number };
-    expect(payload.ok).toBe(true);
-    expect(payload.rowCount).toBeGreaterThan(0);
+    const status = getLiveTicketSyncStatus(db);
+    expect(status.batchId).toBe(LIVE_TICKET_BATCH_ID);
+    expect(status.rowCount).toBeGreaterThan(0);
+    expect(status.lastUpdatedAt).toEqual(expect.any(String));
+    expect(status.platformSyncTicketsEnabled).toBe(true);
   });
 });

@@ -1,10 +1,36 @@
 {
-  "description": "Expected Excel column values for golden-1 ticket (see phase2bZenteraExport.test.ts)",
-  "columns": {
+  "description": "Ticket workbook mapping columns for golden-1 (phase2bZenteraExport). Host IP excluded per D-TICKET-01.",
+  "decisionD_TICKET_01": "Host IP not in ddp_ticket_maintain.xlsx; mapping export only (inTicketWorkbook: false).",
+  "ticketId": "golden-1",
+  "mappingFieldValues": {
+    "adAccount": "NEW.USER",
+    "adName": "新員工",
+    "bu": "IT",
+    "role": "SHARED_ROLE",
+    "vmHostname": "TWPJOTHER",
+    "application": "Digital Design Platform",
+    "userRoles": "MGR_ROLE_A, SHARED_ROLE"
+  },
+  "excelHeaders": {
+    "Ticket ID": "golden-1",
+    "異常": "檢查",
+    "工單狀態": "Open",
+    "AD Account": "NEW.USER",
+    "AD Name (Chinese Name)": "新員工",
+    "FirstName": "NEW",
+    "LastName": "USER",
+    "Mail": "new.user@deltaww.com",
+    "BU": "IT",
     "Role": "SHARED_ROLE",
-    "Application": "Digital Design Platform",
-    "User Roles": "MGR_ROLE_A, SHARED_ROLE",
+    "NB Hostname": "",
+    "Group Owner": "G-Delta-rollout_admin",
+    "Group Name": "",
+    "NAS Folder Name": "",
     "VM HostName": "TWPJOTHER",
-    "BU": "IT"
+    "NEW VM": "",
+    "User Roles": "MGR_ROLE_A, SHARED_ROLE",
+    "Application": "Digital Design Platform",
+    "Template Name": "",
+    "Location": ""
   }
 }

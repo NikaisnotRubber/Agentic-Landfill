@@ -83,7 +83,10 @@
 | **REQ-PLAT-003** | P0 | **匯出契約** + serializer + golden 測試 | 🟡 JSON + plan B0 | `mapping-export-schema.json` 驅動匯出 |
 | **REQ-PLAT-004** | P1 | 映射 xlsx/csv 匯出 CLI/API | ⬜ | 表頭/順序/儲存格型別對齊契約 |
 | **REQ-PLAT-005** | P2 | Published batch 查詢 API | ⬜ | 供 UI / enrich 讀取 |
-| **REQ-PLAT-006** | P2 | Helpdesk 工單匯出共用 `mappingFieldId` | ⬜ | `buildDdpExcelRows` 與平台同一 transform |
+| **REQ-PLAT-006** | P2 | Helpdesk 工單匯出共用 `mappingFieldId` | ✅ B6 | `buildDdpExcelRows` 與平台同一 transform |
+| **REQ-PLAT-007** | P1 | 工單 Processed → `mapping_row` upsert | ✅ B7.1–B7.4 | ticket 增量寫入 `live-ticket-sync` |
+| **REQ-PLAT-008** | P1 | SQLite 為唯一正式 DB | ✅ | 見 platform mapping spec §4 |
+| **REQ-PLAT-009** | P2 | **`mappingSync` 可觀測性**（UI + API） | ⬜ B7.6 | 見 [`2026-06-03-platform-mapping-sync-observability.md`](2026-06-03-platform-mapping-sync-observability.md) |
 
 ---
 
@@ -121,7 +124,7 @@
 | REQ-AD-001, REQ-AD-002, REQ-AD-003 | **Phase 3** |
 | REQ-ENG-001, REQ-ENG-002, REQ-ENG-003 | **Phase 3**（可並行） |
 | REQ-OPS-001～003 | **Phase 4**（可選） |
-| REQ-PLAT-001～006 | **Track B**（[`2026-06-03-platform-track-b-plan.md`](../plans/2026-06-03-platform-track-b-plan.md)） |
+| REQ-PLAT-001～009 | **Track B**（[`2026-06-03-platform-track-b-plan.md`](../plans/2026-06-03-platform-track-b-plan.md)） |
 
 ---
 

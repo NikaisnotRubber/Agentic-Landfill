@@ -14,10 +14,11 @@ describe("mappingExportSchema contract", () => {
     expect(getMappingExcelHeaders(schema).at(-1)).toBe("Location");
   });
 
-  it("marks Host IP as mapping-only until D-TICKET-01", async () => {
+  it("marks Host IP as mapping-only (D-TICKET-01 excluded from ticket workbook)", async () => {
     const schema = await loadMappingExportSchema();
     const hostIp = schema.columns.find((column) => column.excelHeader === "Host IP");
     expect(hostIp?.inTicketWorkbook).toBe(false);
+    expect(hostIp?.decisionId).toBe("D-TICKET-01");
     expect(hostIp?.dbColumn).toBe("host_ip");
   });
 

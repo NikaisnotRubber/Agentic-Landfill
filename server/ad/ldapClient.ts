@@ -1,6 +1,5 @@
 import { Client } from "ldapts";
 
-import { enrichEntryWithManagerAccount } from "./resolveManagerSamAccount";
 import { normalizeAdEntry, type NormalizedAdEntry } from "./normalizeAdEntry";
 import {
   runWindowsIntegratedLookup,
@@ -25,14 +24,17 @@ type SearchResult = {
   searchEntries: Record<string, unknown>[];
 };
 
+type SearchScope = "sub" | "base";
+
 type LdapClientLike = {
   bind: (dn: string, password: string) => Promise<void>;
   search: (
     baseDn: string,
     options: {
-      scope: "sub";
+      scope: SearchScope;
       filter: string;
       attributes: readonly string[];
+      explicitBufferAttributes?: readonly string[];
     },
   ) => Promise<SearchResult>;
   unbind: () => Promise<void>;
@@ -47,8 +49,14 @@ type AdEnv = Partial<{
   AD_PASSWORD: string;
 }>;
 
+export type ManagerAccountLookupResult = {
+  adAccount: string;
+  displayName: string;
+};
+
 export type AdLookupClient = {
   lookupUser: (account: string) => Promise<NormalizedAdEntry | null>;
+  lookupManagerAccount: (managerDn: string) => Promise<ManagerAccountLookupResult | null>;
   close: () => Promise<void>;
 };
 
@@ -81,7 +89,6 @@ export function createAdLookupClient(
   const ldapFactory: LdapFactory =
     options.ldapFactory ?? ((clientOptions) => new Client(clientOptions));
   const integratedLookup = options.runIntegratedLookup ?? runWindowsIntegratedLookup;
-
   let simpleClient: LdapClientLike | null = null;
 
   async function ensureSimpleClient(): Promise<LdapClientLike> {
@@ -105,26 +112,38 @@ export function createAdLookupClient(
       scope: "sub",
       filter: `(sAMAccountName=${escapeLdapFilterValue(account)})`,
       attributes: USER_ATTRIBUTES,
+      explicitBufferAttributes: ["cn", "manager"],
     });
 
     const [firstEntry] = searchEntries;
-    if (!firstEntry) {
+    return firstEntry ? normalizeAdEntry(firstEntry) : null;
+  }
+
+
+  async function lookupManagerAccountWithSimpleBind(
+    managerDn: string,
+  ): Promise<ManagerAccountLookupResult | null> {
+    const normalizedDn = managerDn.trim();
+    if (!normalizedDn) {
       return null;
     }
 
-    const enrichedEntry = await enrichEntryWithManagerAccount(
-      async (filter) => {
-        const { searchEntries: managerEntries } = await client.search(baseDn, {
-          scope: "sub",
-          filter,
-          attributes: ["sAMAccountName"],
-        });
-        return managerEntries[0] ?? null;
-      },
-      firstEntry,
-    );
+    const client = await ensureSimpleClient();
+    const { searchEntries } = await client.search(normalizedDn, {
+      scope: "base",
+      filter: "(objectClass=*)",
+      attributes: ["sAMAccountName", "cn"],
+      explicitBufferAttributes: ["cn"],
+    });
 
-    return normalizeAdEntry(enrichedEntry);
+    const [entry] = searchEntries;
+    if (!entry) {
+      return null;
+    }
+
+    const normalizedEntry = normalizeAdEntry(entry);
+    const { adAccount, displayName } = normalizedEntry;
+    return adAccount ? { adAccount, displayName } : null;
   }
 
   return {
@@ -154,6 +173,18 @@ export function createAdLookupClient(
       }
 
       return lookupWithSimpleBind(normalizedAccount);
+    },
+
+    async lookupManagerAccount(managerDn: string) {
+      if (!managerDn.trim()) {
+        return null;
+      }
+
+      if (!hasSimpleBindCredentials) {
+        return null;
+      }
+
+      return lookupManagerAccountWithSimpleBind(managerDn);
     },
 
     async close() {

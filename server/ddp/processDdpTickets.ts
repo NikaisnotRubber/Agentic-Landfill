@@ -1,5 +1,4 @@
 import type { TicketRecord } from "../types";
-import { tryLoadZenteraIndexes } from "../zentera/loadZenteraIndexes";
 import { parseDdpTicket } from "./parseDdpTicket";
 import type { ProcessedDdpRow, ProcessedDdpSummary } from "./types";
 
@@ -11,10 +10,8 @@ export function processDdpTickets(
     "latestSeenId" | "previousSeenId" | "trackerWarning"
   > = {},
 ): { rows: ProcessedDdpRow[]; summary: ProcessedDdpSummary } {
-  const zentera = tryLoadZenteraIndexes();
-
   const rows = tickets.map((ticket) =>
-    parseDdpTicket(ticket, newTicketIds.has(ticket.id), { zentera }),
+    parseDdpTicket(ticket, newTicketIds.has(ticket.id)),
   );
 
   const abnormalRowCount = rows.filter((row) => row.abnormalFlags.length > 0).length;

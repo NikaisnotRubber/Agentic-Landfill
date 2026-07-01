@@ -1,7 +1,7 @@
 # Track B — 映射 DB 與匯出契約（開發計劃）
 
-> **For agentic workers:** 依 **B0 → B6** 順序實作；每完成子任務更新 checkbox 與 [`docs/PROGRESS.md`](../../PROGRESS.md)。  
-> **Spec：** [`specs/2026-06-03-platform-mapping-db-export.md`](../specs/2026-06-03-platform-mapping-db-export.md)  
+> **For agentic workers:** 依 **B0 → B7** 順序實作；每完成子任務更新 checkbox 與 [`docs/PROGRESS.md`](../../PROGRESS.md)。  
+> **Spec：** [`specs/2026-06-03-platform-mapping-db-export.md`](../specs/2026-06-03-platform-mapping-db-export.md) · **Ticket sync：** [`specs/2026-06-03-platform-ticket-incremental-sync.md`](../specs/2026-06-03-platform-ticket-incremental-sync.md) · **B7.6 可觀測性：** [`specs/2026-06-03-platform-mapping-sync-observability.md`](../specs/2026-06-03-platform-mapping-sync-observability.md)  
 > **Contract:** [`fixtures/mapping-export-schema.json`](../fixtures/mapping-export-schema.json)  
 > **Branch:** `feat/platform-mapping-db-export`（自 `master`）
 
@@ -39,6 +39,8 @@ tests/platform/
 | **B4** | 匯出 xlsx/csv | B0,B3 | 1–2 天 |
 | **B5** | Published batch API | B3 | 2–3 天 |
 | **B6** | Helpdesk 契約合一 | B4,B5 + Track A | 2–3 天 |
+| **B7** | 工單增量同步總表 | B3,B5 + Track A | 2–3 天 |
+| **B7.6** | `mappingSync` 可觀測性 | B7.3 | 0.5–1 天（階段 1） |
 
 ---
 
@@ -123,13 +125,53 @@ tests/platform/
 
 ## B6 — Helpdesk 匯出契約合一（REQ-PLAT-006）
 
-- [ ] **B6.1** 決策 **D-TICKET-01**（Host IP 是否進工單表）。
-- [ ] **B6.2** 重構 `buildDdpExcelRows` 共用 `serializeMappingRow`（待補）。
+- [x] **B6.1** 決策 **D-TICKET-01**（Host IP **不**進工單表）。
+- [x] **B6.2** 重構 `buildDdpExcelRows` 共用 `serializeMappingRow`（`serializeTicketMappingCells`）。
 - [x] **B6.3** `USE_PLATFORM_MAPPING_DB=1` 時 `resolveZenteraExportFields` 讀 published DB。
-- [ ] **B6.4** 更新 `export-golden-columns.json`（待補）。
+- [x] **B6.4** 更新 `export-golden-columns.json` + `ddpTicketWorkbookContract.test.ts`。
 - [x] **B6.5** `helpdesk-workflow.md` 平台 API 小節。
 
 **驗收：** `pnpm test` 工單匯出測試仍綠；映射欄與平台匯出同一 transform。
+
+---
+
+## B7 — 工單增量同步總表（REQ-PLAT-007 / REQ-PLAT-008）
+
+> Spec：[`2026-06-03-platform-ticket-incremental-sync.md`](../specs/2026-06-03-platform-ticket-incremental-sync.md)
+
+- [x] **B7.1** Schema：`source_kind`、`ticket_id`、`updated_at`；partial unique index（ticket upsert 鍵）。
+- [x] **B7.2** `platform/sync/upsertMappingFromProcessed.ts` + `mapProcessedToMappingRow.ts`。
+- [x] **B7.3** `attachProcessedPayload` 整合；`PLATFORM_SYNC_TICKETS` 開關。
+- [x] **B7.4** `tests/platform/upsertMappingFromProcessed.test.ts`。
+- [x] **B7.5** enrich 查詢：ticket 列優先於 batch 列（同 `ad_account` + hostname）。
+- [ ] **B7.6** UI / API 顯示 `mappingSync` 摘要 — 詳見 spec [`2026-06-03-platform-mapping-sync-observability.md`](../specs/2026-06-03-platform-mapping-sync-observability.md)。
+
+### B7.6 開發計劃（REQ-PLAT-009）
+
+> **Spec：** [`specs/2026-06-03-platform-mapping-sync-observability.md`](../specs/2026-06-03-platform-mapping-sync-observability.md)
+
+#### 階段 1 — 最小可用（建議先完成並勾選 B7.6）
+
+- [ ] **B7.6.1** `src/lib/types.ts`：新增 `MappingSyncSummary`，`ProcessedDdpSummary` 加 `mappingSync?`（對齊 `server/ddp/types.ts`）。
+- [ ] **B7.6.2** `src/App.vue`：metrics-band 顯示 `已更新 {upserted}/{attempted}`、`skipped`；`mappingSync.error` 用 warning status band（比照 `adWarning`）。
+- [ ] **B7.6.3** 後端測試：`attachProcessedPayload` 在 sync 成功／失敗／`PLATFORM_SYNC_TICKETS=0` 三種情境回傳預期 JSON（可擴充 `tests/fetchProcessAndEnrich.test.ts`）。
+- [ ] **B7.6.4** 前端或整合測試：mock 含 `mappingSync` 的 fetch 回應，assert 型別或關鍵欄位。
+- [ ] **B7.6.5** 更新 [`2026-06-02-helpdesk-backlog.md`](../specs/2026-06-02-helpdesk-backlog.md) REQ-PLAT-009 狀態。
+
+**階段 1 驗收：** 本機 Fetch+Enrich 後 UI 可見同步筆數；DB 唯讀時出現 warning 且工單列表正常；`pnpm test` 全綠。
+
+#### 階段 2 — 維運 API（可選）
+
+- [ ] **B7.6.6** `GET /api/platform/mapping/sync-status`：`live-ticket-sync` 列數、`max(updated_at)`、`platformSyncTicketsEnabled`。
+- [ ] **B7.6.7** `tests/platform/platformMappingApi.test.ts` 覆蓋 sync-status。
+- [ ] **B7.6.8** [`docs/helpdesk-workflow.md`](../../helpdesk-workflow.md) 補 curl 範例與 `mappingSync` 契約說明。
+
+#### 階段 3 — 進階（另立項，不阻塞 B7.6 勾選）
+
+- [ ] Processed 表逐筆「已寫入總表」標記（需 upsert 回傳 per-ticket 明細）。
+- [ ] 連結至 `/api/platform/mapping/rows?adAccount=` 預覽 DB 列。
+
+**驗收：** Fetch 工單後 `mapping_row` 含 `live-ticket-sync` 列；重複報案更新同一列；**操作者可從 UI 或 API 看見同步摘要**。
 
 ---
 

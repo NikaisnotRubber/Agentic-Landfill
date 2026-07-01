@@ -1,4 +1,3 @@
-import { getPublishedBatchId } from "../batch/batchService";
 import type { PlatformDatabase } from "../db/database";
 import { resolveRoleExportValue } from "../export/serializeMappingRow";
 import type { MappingRow } from "../export/types";
@@ -11,50 +10,37 @@ export type PublishedMappingLookup = {
   hostIp: string;
 };
 
-export function lookupPublishedMappingRow(
+type MappingSourceKind = "ticket" | "batch";
+
+function findPublishedMappingRow(
   db: PlatformDatabase,
-  adAccount: string,
-  vmHostname = "",
-): PublishedMappingLookup | null {
-  const batchId = getPublishedBatchId(db);
-  if (!batchId) {
-    return null;
-  }
+  options: {
+    adAccount: string;
+    vmHostname?: string;
+    sourceKind: MappingSourceKind;
+  },
+): MappingRow | undefined {
+  const account = options.adAccount.trim().toUpperCase();
+  const host = options.vmHostname?.trim().toUpperCase() ?? "";
 
-  const account = adAccount.trim().toUpperCase();
-  const host = vmHostname.trim().toUpperCase();
-
-  let row: MappingRow | undefined;
+  const base = `
+    SELECT m.* FROM mapping_row m
+    INNER JOIN batches b ON b.id = m.batch_id AND b.status = 'published'
+    WHERE m.ad_account = ? AND m.source_kind = ?
+  `;
 
   if (host) {
-    row = db
-      .prepare(
-        `
-        SELECT * FROM mapping_row
-        WHERE batch_id = ? AND ad_account = ? AND vm_hostname = ?
-        LIMIT 1
-      `,
-      )
-      .get(batchId, account, host) as MappingRow | undefined;
+    return db
+      .prepare(`${base} AND m.vm_hostname = ? ORDER BY m.vm_hostname LIMIT 1`)
+      .get(account, options.sourceKind, host) as MappingRow | undefined;
   }
 
-  if (!row) {
-    row = db
-      .prepare(
-        `
-        SELECT * FROM mapping_row
-        WHERE batch_id = ? AND ad_account = ?
-        ORDER BY vm_hostname
-        LIMIT 1
-      `,
-      )
-      .get(batchId, account) as MappingRow | undefined;
-  }
+  return db
+    .prepare(`${base} ORDER BY m.vm_hostname LIMIT 1`)
+    .get(account, options.sourceKind) as MappingRow | undefined;
+}
 
-  if (!row) {
-    return null;
-  }
-
+function toPublishedLookup(row: MappingRow): PublishedMappingLookup {
   return {
     role: resolveRoleExportValue(row),
     application: row.application ?? "",
@@ -62,4 +48,32 @@ export function lookupPublishedMappingRow(
     vmHostname: row.vm_hostname ?? "",
     hostIp: row.host_ip ?? "",
   };
+}
+
+export function lookupPublishedMappingRow(
+  db: PlatformDatabase,
+  adAccount: string,
+  vmHostname = "",
+): PublishedMappingLookup | null {
+  const account = adAccount.trim().toUpperCase();
+  const host = vmHostname.trim().toUpperCase();
+  const kinds: MappingSourceKind[] = ["ticket", "batch"];
+
+  if (host) {
+    for (const sourceKind of kinds) {
+      const row = findPublishedMappingRow(db, { adAccount: account, vmHostname: host, sourceKind });
+      if (row) {
+        return toPublishedLookup(row);
+      }
+    }
+  }
+
+  for (const sourceKind of kinds) {
+    const row = findPublishedMappingRow(db, { adAccount: account, sourceKind });
+    if (row) {
+      return toPublishedLookup(row);
+    }
+  }
+
+  return null;
 }

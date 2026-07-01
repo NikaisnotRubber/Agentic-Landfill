@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  detectHelpdeskAutomationEnvironment,
   getDomainSelector,
   getLoginButton,
   getPasswordField,
@@ -25,10 +26,40 @@ function createPageMock() {
 }
 
 describe("helpdeskLocators", () => {
-  it("builds resilient username locators for Windows and Linux variants", () => {
+  it("detects the Windows browser automation environment", () => {
+    expect(
+      detectHelpdeskAutomationEnvironment({
+        env: {},
+        platform: "win32",
+        release: "10.0.22631",
+      }),
+    ).toBe("windows");
+  });
+
+  it("detects the WSL browser automation environment", () => {
+    expect(
+      detectHelpdeskAutomationEnvironment({
+        env: { WSL_DISTRO_NAME: "Ubuntu" },
+        platform: "linux",
+        release: "6.6.87.2-microsoft-standard-WSL2",
+      }),
+    ).toBe("wsl");
+  });
+
+  it("detects the generic Linux browser automation environment", () => {
+    expect(
+      detectHelpdeskAutomationEnvironment({
+        env: {},
+        platform: "linux",
+        release: "6.8.0-generic",
+      }),
+    ).toBe("linux");
+  });
+
+  it("builds native-first username locators for Windows", () => {
     const { page, calls } = createPageMock();
 
-    getUsernameField(page as never);
+    getUsernameField(page as never, { environment: "windows" });
 
     expect(calls.map((call) => call.args)).toEqual([
       ["#username"],
@@ -38,10 +69,23 @@ describe("helpdeskLocators", () => {
     ]);
   });
 
-  it("builds resilient password locators for Windows and Linux variants", () => {
+  it("builds role-first username locators for WSL and Linux", () => {
     const { page, calls } = createPageMock();
 
-    getPasswordField(page as never);
+    getUsernameField(page as never, { environment: "wsl" });
+
+    expect(calls.map((call) => call.args)).toEqual([
+      ["textbox", { name: "Username" }],
+      ["textbox", { name: "j_username" }],
+      ["#username"],
+      ['input[name="j_username"]'],
+    ]);
+  });
+
+  it("builds native-first password locators for Windows", () => {
+    const { page, calls } = createPageMock();
+
+    getPasswordField(page as never, { environment: "windows" });
 
     expect(calls.map((call) => call.args)).toEqual([
       ["#password"],
@@ -51,24 +95,38 @@ describe("helpdeskLocators", () => {
     ]);
   });
 
-  it("prefers the native domain select before the combobox role", () => {
+  it("prefers the native domain select before the combobox role on Windows", () => {
     const { page, calls } = createPageMock();
 
-    getDomainSelector(page as never);
+    getDomainSelector(page as never, { environment: "windows" });
 
     expect(calls.map((call) => call.args)).toEqual([
+      ["#domain_select"],
       ['select[name="domain"]'],
       ["combobox", undefined],
     ]);
   });
 
-  it("prefers the submit button id before the Log in role", () => {
+  it("prefers the combobox role before the native domain select on WSL", () => {
     const { page, calls } = createPageMock();
 
-    getLoginButton(page as never);
+    getDomainSelector(page as never, { environment: "wsl" });
+
+    expect(calls.map((call) => call.args)).toEqual([
+      ["combobox", undefined],
+      ["#domain_select"],
+      ['select[name="domain"]'],
+    ]);
+  });
+
+  it("prefers the submit button id before the Log in role on Windows", () => {
+    const { page, calls } = createPageMock();
+
+    getLoginButton(page as never, { environment: "windows" });
 
     expect(calls.map((call) => call.args)).toEqual([
       ["#loginSDPage"],
+      ['button[name="loginButton"]'],
       ["button", { name: "Log in" }],
     ]);
   });

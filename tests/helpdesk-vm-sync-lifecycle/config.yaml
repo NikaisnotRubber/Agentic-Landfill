@@ -1,0 +1,45 @@
+nodes:
+  liveAdLookup: true
+  initialSync: true
+  updateSync: true
+
+database:
+  path: data/vm-master.sqlite
+  resetBeforeRun: false
+  keepAfterRun: true
+
+user:
+  adAccount: SUNGCHAO.SC.YU
+  displayName: SUNGCHAO.SC.YU
+  mail: SUNGCHAO.SC.YU@cyntec.com
+  department: Software/Firmware Engineering HC Section
+  manager: ALEX.MX.CHEN
+  managerDn: "CN=ALEX.MX.CHEN,OU=RD1,OU=Users,OU=TWCYN,OU=TW,OU=Delta,DC=delta,DC=corp"
+  employeeId: "763002"
+  bg: CPBG
+  bu: "CP R&D"
+
+manager:
+  adName: ALEX.MX.CHEN
+  chnName: ALEX.MX.CHEN
+  emailAddress: ""
+  bg: CPBG
+  bu: "CP R&D"
+  vmAssignments:
+    - vmName: TWPJDDP01
+      groupName: DDP_USERS
+      zenteraRole: DDP_USER
+
+update:
+  user:
+    mail: sungchao.updated@example.test
+    bg: CPBG
+    bu: "CP R&D Updated"
+  manager:
+    vmAssignments:
+      - vmName: TWPJDDP02
+        groupName: DDP_POWER_USERS
+        zenteraRole: DDP_POWER
+      - vmName: TWPJDDP03
+        groupName: DDP_POWER_USERS_2
+        zenteraRole: DDP_POWER_2

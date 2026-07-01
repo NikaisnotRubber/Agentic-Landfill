@@ -97,4 +97,21 @@ CREATE INDEX IF NOT EXISTS idx_mapping_row_ad_account ON mapping_row(ad_account)
   `
 CREATE INDEX IF NOT EXISTS idx_raw_ad_members_batch ON raw_ad_members(batch_id);
 `,
+  `
+ALTER TABLE mapping_row ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'batch';
+`,
+  `
+ALTER TABLE mapping_row ADD COLUMN ticket_id TEXT;
+`,
+  `
+ALTER TABLE mapping_row ADD COLUMN updated_at TEXT;
+`,
+  `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mapping_row_ticket_upsert
+  ON mapping_row(ad_account, vm_hostname, nb_hostname)
+  WHERE source_kind = 'ticket';
+`,
+  `
+CREATE INDEX IF NOT EXISTS idx_mapping_row_source_kind ON mapping_row(source_kind);
+`,
 ];

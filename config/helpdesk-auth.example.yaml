@@ -1,6 +1,6 @@
 baseUrl: https://ithelpdesk.deltaww.com/
-username: alvis.mc.tsao
-password: CSffee114514
+username: YOUR.AD.ACCOUNT
+password: YOUR_PASSWORD
 domain: DELTA
 stateFile: IT工單(不可用，僅供參考)/delta_sso_state.json
 headless: true

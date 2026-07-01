@@ -22,6 +22,11 @@ export type ProcessedDdpSummary = {
   totalRows: number;
   abnormalRowCount: number;
   newTicketCount: number;
+  mappingSync?: {
+    attempted: number;
+    upserted: number;
+    skipped: number;
+  };
   trackerWarning?: string;
   latestSeenId?: string;
   previousSeenId?: string;
@@ -48,7 +53,6 @@ export type TicketAdInfo = {
   mail: string;
   department: string;
   manager: string;
-  managerAccount: string;
   employeeId: string;
   bg: string;
   bu: string;
@@ -88,6 +92,4 @@ export type TicketFetchResult = TicketFetchSuccess | TicketFetchFailure;
 export type TicketEnrichmentPayload = {
   source: TicketFetchSuccess["source"];
   tickets: TicketRecord[];
-  processedRows?: ProcessedDdpRow[];
-  processedSummary?: ProcessedDdpSummary;
 };

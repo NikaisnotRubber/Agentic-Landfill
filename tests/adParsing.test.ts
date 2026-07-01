@@ -36,11 +36,15 @@ describe("normalizeAdEntry", () => {
       mail: "jiahua.wu@deltaww.com",
       department: "Infra",
       manager: "王小明",
-      managerAccount: "",
       employeeId: "123456",
       bg: "LTW",
       bu: "IT",
     });
+    expect(
+      normalizeAdEntry({
+        manager: "CN=????OU=Users,DC=delta,DC=corp",
+      }).managerDn,
+    ).toContain("OU=Users,DC=delta,DC=corp");
   });
 
   it("normalizes missing values to empty strings", () => {
@@ -50,14 +54,14 @@ describe("normalizeAdEntry", () => {
       mail: "",
       department: "",
       manager: "",
-      managerAccount: "",
+      managerDn: "",
       employeeId: "",
       bg: "",
       bu: "",
     });
   });
 
-  it("keeps manager sAMAccountName for Zentera role lookup", () => {
+  it("keeps manager DN for manager account lookup", () => {
     expect(
       normalizeAdEntry({
         sAMAccountName: "JIAHUA.WU",
@@ -67,7 +71,7 @@ describe("normalizeAdEntry", () => {
       }),
     ).toMatchObject({
       manager: "LEO.ZOU",
-      managerAccount: "LEO.ZOU",
+      managerDn: "CN=LEO.ZOU,OU=Users,DC=delta,DC=corp",
     });
   });
 });
