@@ -18,7 +18,7 @@ __pycache__/
 docs/.obsidian/
 docs/**/.obsidian/
 docs/Pasted image*.png
-docs/{*.png
+docs/[{]*.png
 docs/VM_Master_Table/
 google-chrome-stable_current_amd64.deb
 .worktrees/
