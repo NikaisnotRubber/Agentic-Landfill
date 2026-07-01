@@ -138,23 +138,84 @@ export type HelpdeskVmSyncResult =
   | { ok: true; summary: HelpdeskVmSyncSummary }
   | { ok: false; error: string; logId?: string; logPath?: string };
 
-export type HelpdeskVmSyncLogEntry = {
+export type VmMasterExecutionKind = "helpdesk-sync" | "excel-import";
+
+export type VmMasterHelpdeskSyncRequestSummary = {
+  requestedTicketCount: number;
+  fetchedTicketCount: number;
+  parsedTicketCount: number;
+  tickets: Array<{
+    ticketId: string;
+    requester: string;
+    subject: string;
+  }>;
+};
+
+export type VmMasterExcelImportRequestSummary = {
+  fileName: string;
+  worksheetName: string;
+  excelRowCount: number;
+  mappedColumnCount: number;
+  mappedFields: string[];
+  rows: Array<{
+    rowNumber: number;
+    adName: string;
+    vmName?: string;
+  }>;
+};
+
+export type VmMasterExecutionRequestSummary =
+  | VmMasterHelpdeskSyncRequestSummary
+  | VmMasterExcelImportRequestSummary;
+
+export type VmMasterExcelImportSummary = {
+  rowCount: number;
+  importedRowCount: number;
+  failedRowCount: number;
+  adEnrichedCount: number;
+  dbFilledCount: number;
+  managerInferredAssignmentCount: number;
+  explicitAssignmentCount: number;
+  warnings: HelpdeskVmSyncWarning[];
+  logId?: string;
+  logPath?: string;
+};
+
+export type VmMasterExecutionSummary = HelpdeskVmSyncSummary | VmMasterExcelImportSummary;
+
+export type VmMasterExecutionOptions =
+  | HelpdeskVmSyncOptions
+  | {
+      fileName: string;
+      worksheetName: string;
+      rowCount: number;
+      mappedFields: string[];
+    };
+
+export type VmMasterExecutionLogEntry = {
   id: string;
+  kind: VmMasterExecutionKind;
   startedAt: string;
   finishedAt: string;
   ok: boolean;
-  options: HelpdeskVmSyncOptions;
-  summary: HelpdeskVmSyncSummary;
+  options: VmMasterExecutionOptions;
+  requestSummary?: VmMasterExecutionRequestSummary;
+  summary: VmMasterExecutionSummary;
   warnings: HelpdeskVmSyncWarning[];
   logs: string[];
   error?: string;
 };
 
-export type HelpdeskVmSyncLogListItem = {
+export type VmMasterExecutionLogListItem = {
   id: string;
+  kind: VmMasterExecutionKind;
   startedAt: string;
   finishedAt: string;
   ok: boolean;
   warningCount: number;
   logPath: string;
 };
+
+export type HelpdeskVmSyncLogEntry = VmMasterExecutionLogEntry;
+
+export type HelpdeskVmSyncLogListItem = VmMasterExecutionLogListItem;

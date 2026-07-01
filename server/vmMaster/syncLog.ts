@@ -51,13 +51,23 @@ function getLogPath(id: string, options: SyncLogOptions): string {
   return path.join(getLogDir(options), `${id}.json`);
 }
 
-function toListItem(entry: HelpdeskVmSyncLogEntry, logPath: string): HelpdeskVmSyncLogListItem {
+function normalizeLogEntry(raw: unknown): HelpdeskVmSyncLogEntry {
+  const entry = raw as HelpdeskVmSyncLogEntry & { kind?: HelpdeskVmSyncLogEntry["kind"] };
   return {
-    id: entry.id,
-    startedAt: entry.startedAt,
-    finishedAt: entry.finishedAt,
-    ok: entry.ok,
-    warningCount: entry.warnings.length,
+    ...entry,
+    kind: entry.kind ?? "helpdesk-sync",
+  };
+}
+
+function toListItem(entry: HelpdeskVmSyncLogEntry, logPath: string): HelpdeskVmSyncLogListItem {
+  const normalized = normalizeLogEntry(entry);
+  return {
+    id: normalized.id,
+    kind: normalized.kind,
+    startedAt: normalized.startedAt,
+    finishedAt: normalized.finishedAt,
+    ok: normalized.ok,
+    warningCount: normalized.warnings.length,
     logPath,
   };
 }
@@ -97,7 +107,7 @@ export async function listHelpdeskVmSyncLogs(
       .filter((name) => name.startsWith("helpdesk-vm-sync-") && name.endsWith(".json"))
       .map(async (name) => {
         const logPath = path.join(logDir, name);
-        const payload = JSON.parse(await readFile(logPath, "utf8")) as HelpdeskVmSyncLogEntry;
+        const payload = normalizeLogEntry(JSON.parse(await readFile(logPath, "utf8")));
         return toListItem(payload, logPath);
       }),
   );
@@ -110,5 +120,5 @@ export async function readHelpdeskVmSyncLog(
   options: SyncLogOptions = {},
 ): Promise<HelpdeskVmSyncLogEntry> {
   const logPath = getLogPath(id, options);
-  return JSON.parse(await readFile(logPath, "utf8")) as HelpdeskVmSyncLogEntry;
+  return normalizeLogEntry(JSON.parse(await readFile(logPath, "utf8")));
 }

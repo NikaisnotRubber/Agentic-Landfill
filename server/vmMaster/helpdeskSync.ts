@@ -119,7 +119,20 @@ export async function syncHelpdeskVmMaster(
           startedAt,
           finishedAt,
           ok: result.ok,
+          kind: "helpdesk-sync",
           options: syncOptions,
+          requestSummary: {
+            requestedTicketCount: syncOptions.count,
+            fetchedTicketCount: summary.fetchedTicketCount,
+            parsedTicketCount: summary.parsedTicketCount,
+            tickets: fetchResult?.ok
+              ? fetchResult.tickets.slice(0, 5).map((ticket) => ({
+                  ticketId: ticket.id,
+                  requester: ticket.requester,
+                  subject: ticket.subject,
+                }))
+              : [],
+          },
           summary: logSummary,
           warnings: logSummary.warnings,
           logs,
@@ -149,7 +162,7 @@ export async function syncHelpdeskVmMaster(
     }
   }
 
-  let fetchResult: TicketFetchResult;
+  let fetchResult!: TicketFetchResult;
   try {
     appendLog("INFO", `starting helpdesk VM sync count=${syncOptions.count}`);
     fetchResult = await fetchTickets(syncOptions);
