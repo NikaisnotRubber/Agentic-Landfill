@@ -420,6 +420,66 @@ export function findManagerAssignments(
   }));
 }
 
+export function findVmUserForImport(
+  database: VmMasterDatabase,
+  adName: string,
+): (VmUserSyncInput & { buCurr: string; bgCurr: string }) | null {
+  const row = database
+    .prepare(
+      `SELECT ad_name, chn_name, email_address, bg, bu, user_role, user_dept, report_to, bu_curr, bg_curr
+       FROM vm_users WHERE ad_name = ?`,
+    )
+    .get(adName) as
+    | {
+        ad_name: string;
+        chn_name: string;
+        email_address: string;
+        bg: string;
+        bu: string;
+        user_role: string;
+        user_dept: string;
+        report_to: string;
+        bu_curr: string;
+        bg_curr: string;
+      }
+    | undefined;
+
+  return row
+    ? {
+        adName: row.ad_name,
+        chnName: row.chn_name,
+        emailAddress: row.email_address,
+        bg: row.bg,
+        bu: row.bu,
+        userRole: row.user_role,
+        userDept: row.user_dept,
+        reportTo: row.report_to,
+        buCurr: row.bu_curr,
+        bgCurr: row.bg_curr,
+      }
+    : null;
+}
+
+export function findAssignmentDefaultsForVm(
+  database: VmMasterDatabase,
+  vmName: string,
+): VmAssignmentInput | null {
+  const row = database
+    .prepare(
+      `SELECT vm_name, group_name, zentera_role
+       FROM vm_user_vm_assignments
+       WHERE vm_name = ?
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+    )
+    .get(vmName) as
+    | { vm_name: string; group_name: string; zentera_role: string }
+    | undefined;
+
+  return row
+    ? { vmName: row.vm_name, groupName: row.group_name, zenteraRole: row.zentera_role }
+    : null;
+}
 export function replaceUserVmAssignments(
   database: VmMasterDatabase,
   adName: string,
