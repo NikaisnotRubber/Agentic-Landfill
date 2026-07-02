@@ -9,6 +9,7 @@ import {
 } from "../server/vmMaster/syncLog";
 import type {
   HelpdeskVmSyncSummary,
+  VmMasterExcelImportWarning,
   VmMasterExcelImportSummary,
   VmMasterExecutionLogInput,
 } from "../server/vmMaster/types";
@@ -27,6 +28,14 @@ const helpdeskSummary: HelpdeskVmSyncSummary = {
   warnings: [],
 };
 
+const excelImportWarning: VmMasterExcelImportWarning = {
+  rowNumber: 3,
+  stage: "ad-enrichment",
+  code: "ad-user-not-found",
+  message: "AD user was not found",
+  adName: "UNKNOWN.USER",
+};
+
 const excelSummary: VmMasterExcelImportSummary = {
   rowCount: 2,
   importedRowCount: 1,
@@ -35,7 +44,7 @@ const excelSummary: VmMasterExcelImportSummary = {
   dbFilledCount: 0,
   managerInferredAssignmentCount: 0,
   explicitAssignmentCount: 1,
-  warnings: [],
+  warnings: [excelImportWarning],
 };
 
 const invalidExcelOptionsLog: VmMasterExecutionLogInput = {
@@ -139,9 +148,9 @@ describe("VM Master execution logs", () => {
         dbFilledCount: 0,
         managerInferredAssignmentCount: 0,
         explicitAssignmentCount: 1,
-        warnings: [],
+        warnings: [excelImportWarning],
       },
-      warnings: [],
+      warnings: [excelImportWarning],
       logs: ["2026-07-01 09:00:00,000 INFO imported 1 row"],
     };
 
@@ -154,6 +163,7 @@ describe("VM Master execution logs", () => {
       excelRowCount: 2,
       mappedColumnCount: 2,
     });
+    expect(readBack.warnings).toEqual([excelImportWarning]);
   });
 
   it("defaults legacy helpdesk logs to helpdesk-sync", async () => {

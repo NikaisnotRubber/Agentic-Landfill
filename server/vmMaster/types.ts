@@ -168,6 +168,25 @@ export type VmMasterExecutionRequestSummary =
   | VmMasterHelpdeskSyncRequestSummary
   | VmMasterExcelImportRequestSummary;
 
+export type VmMasterExcelImportWarningStage =
+  | "mapping"
+  | "ad-enrichment"
+  | "db-fill"
+  | "vm-inference"
+  | "db";
+
+export type VmMasterExcelImportWarning = {
+  rowNumber: number;
+  stage: VmMasterExcelImportWarningStage;
+  code: string;
+  message: string;
+  adName?: string;
+  field?: string;
+  detail?: string;
+};
+
+export type VmMasterExecutionWarning = HelpdeskVmSyncWarning | VmMasterExcelImportWarning;
+
 export type VmMasterExcelImportSummary = {
   rowCount: number;
   importedRowCount: number;
@@ -176,7 +195,7 @@ export type VmMasterExcelImportSummary = {
   dbFilledCount: number;
   managerInferredAssignmentCount: number;
   explicitAssignmentCount: number;
-  warnings: HelpdeskVmSyncWarning[];
+  warnings: VmMasterExcelImportWarning[];
   logId?: string;
   logPath?: string;
 };
@@ -197,7 +216,6 @@ export type VmMasterExecutionLogBase = {
   startedAt: string;
   finishedAt: string;
   ok: boolean;
-  warnings: HelpdeskVmSyncWarning[];
   logs: string[];
   error?: string;
 };
@@ -207,6 +225,7 @@ export type VmMasterHelpdeskSyncExecutionLogEntry = VmMasterExecutionLogBase & {
   options: HelpdeskVmSyncOptions;
   requestSummary?: VmMasterHelpdeskSyncRequestSummary;
   summary: HelpdeskVmSyncSummary;
+  warnings: HelpdeskVmSyncWarning[];
 };
 
 export type VmMasterExcelImportExecutionLogEntry = VmMasterExecutionLogBase & {
@@ -214,6 +233,7 @@ export type VmMasterExcelImportExecutionLogEntry = VmMasterExecutionLogBase & {
   options: VmMasterExcelImportOptions;
   requestSummary?: VmMasterExcelImportRequestSummary;
   summary: VmMasterExcelImportSummary;
+  warnings: VmMasterExcelImportWarning[];
 };
 
 export type VmMasterExecutionLogEntry =
