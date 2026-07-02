@@ -105,6 +105,62 @@ describe("VM Master Excel import preview", () => {
     });
   });
 
+  it("rejects duplicate nonblank headers", async () => {
+    const buffer = await workbookBuffer(
+      ["AD Name", "", "AD Name"],
+      [["CHUNKAI.LIU", "ignored gap", "SUNGCHAO.SC.YU"]],
+    );
+
+    await expect(
+      parseVmMasterExcelPreview({
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+      }),
+    ).rejects.toThrow("Duplicate VM Master Excel header: AD Name");
+  });
+
+  it("counts data rows using only nonblank header columns", async () => {
+    const buffer = await workbookBuffer(
+      ["AD Name", "", "VM_NAME"],
+      [
+        ["", "ignored gap", ""],
+        ["CHUNKAI.LIU", "", ""],
+      ],
+    );
+
+    const preview = await parseVmMasterExcelPreview({
+      fileName: "vm-master.xlsx",
+      workbookBuffer: buffer,
+    });
+
+    expect(preview.rowCount).toBe(1);
+    expect(preview.sampleRows).toEqual([
+      {
+        rowNumber: 3,
+        values: {
+          "AD Name": "CHUNKAI.LIU",
+          VM_NAME: "",
+        },
+      },
+    ]);
+  });
+
+  it("rejects non-string mapping target values with a clear error", () => {
+    expect(() =>
+      validateVmMasterExcelMapping({
+        Account: "AD_NAME",
+        Bad: 123,
+      }),
+    ).toThrow("Invalid VM Master import target field: 123");
+
+    expect(() =>
+      validateVmMasterExcelMapping({
+        Account: "AD_NAME",
+        Bad: { field: "VM_NAME" },
+      }),
+    ).toThrow("Invalid VM Master import target field: [object Object]");
+  });
+
   it("rejects duplicate target fields and missing AD_NAME", () => {
     expect(() =>
       validateVmMasterExcelMapping({

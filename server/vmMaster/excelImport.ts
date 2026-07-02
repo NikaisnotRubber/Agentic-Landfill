@@ -93,20 +93,28 @@ function toCellText(value: ExcelJS.CellValue): string {
 
 function readHeaderColumns(worksheet: ExcelJS.Worksheet): HeaderColumn[] {
   const headers: HeaderColumn[] = [];
+  const seenHeaders = new Set<string>();
 
   worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, columnNumber) => {
     const header = toCellText(cell.value);
 
-    if (header) {
-      headers.push({ header, columnNumber });
+    if (!header) {
+      return;
     }
+
+    if (seenHeaders.has(header)) {
+      throw new Error(`Duplicate VM Master Excel header: ${header}`);
+    }
+
+    seenHeaders.add(header);
+    headers.push({ header, columnNumber });
   });
 
   return headers;
 }
 
-function rowHasData(row: ExcelJS.Row, columnCount: number): boolean {
-  for (let columnNumber = 1; columnNumber <= columnCount; columnNumber += 1) {
+function rowHasData(row: ExcelJS.Row, headers: HeaderColumn[]): boolean {
+  for (const { columnNumber } of headers) {
     if (toCellText(row.getCell(columnNumber).value)) {
       return true;
     }
@@ -142,13 +150,21 @@ export function buildDefaultExcelImportMapping(
 }
 
 export function validateVmMasterExcelMapping(
-  mapping: Partial<Record<string, string>>,
+  mapping: Partial<Record<string, unknown>>,
 ): VmMasterExcelImportMapping {
   const normalizedMapping: VmMasterExcelImportMapping = {};
   const seenFields = new Set<VmMasterExcelImportField>();
 
   for (const [header, rawField] of Object.entries(mapping)) {
-    const trimmedField = rawField?.trim() ?? "";
+    if (rawField == null) {
+      continue;
+    }
+
+    if (typeof rawField !== "string") {
+      throw new Error(`Invalid VM Master import target field: ${rawField}`);
+    }
+
+    const trimmedField = rawField.trim();
 
     if (!trimmedField) {
       continue;
@@ -203,7 +219,7 @@ export async function parseVmMasterExcelPreview({
     for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
 
-      if (!rowHasData(row, worksheet.columnCount)) {
+      if (!rowHasData(row, headerColumns)) {
         continue;
       }
 
