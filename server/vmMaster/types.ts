@@ -181,30 +181,48 @@ export type VmMasterExcelImportSummary = {
   logPath?: string;
 };
 
+export type VmMasterExcelImportOptions = {
+  fileName: string;
+  worksheetName: string;
+  rowCount: number;
+  mappedFields: string[];
+};
+
 export type VmMasterExecutionSummary = HelpdeskVmSyncSummary | VmMasterExcelImportSummary;
 
-export type VmMasterExecutionOptions =
-  | HelpdeskVmSyncOptions
-  | {
-      fileName: string;
-      worksheetName: string;
-      rowCount: number;
-      mappedFields: string[];
-    };
+export type VmMasterExecutionOptions = HelpdeskVmSyncOptions | VmMasterExcelImportOptions;
 
-export type VmMasterExecutionLogEntry = {
+export type VmMasterExecutionLogBase = {
   id: string;
-  kind: VmMasterExecutionKind;
   startedAt: string;
   finishedAt: string;
   ok: boolean;
-  options: VmMasterExecutionOptions;
-  requestSummary?: VmMasterExecutionRequestSummary;
-  summary: VmMasterExecutionSummary;
   warnings: HelpdeskVmSyncWarning[];
   logs: string[];
   error?: string;
 };
+
+export type VmMasterHelpdeskSyncExecutionLogEntry = VmMasterExecutionLogBase & {
+  kind: "helpdesk-sync";
+  options: HelpdeskVmSyncOptions;
+  requestSummary?: VmMasterHelpdeskSyncRequestSummary;
+  summary: HelpdeskVmSyncSummary;
+};
+
+export type VmMasterExcelImportExecutionLogEntry = VmMasterExecutionLogBase & {
+  kind: "excel-import";
+  options: VmMasterExcelImportOptions;
+  requestSummary?: VmMasterExcelImportRequestSummary;
+  summary: VmMasterExcelImportSummary;
+};
+
+export type VmMasterExecutionLogEntry =
+  | VmMasterHelpdeskSyncExecutionLogEntry
+  | VmMasterExcelImportExecutionLogEntry;
+
+export type VmMasterExecutionLogInput =
+  | Omit<VmMasterHelpdeskSyncExecutionLogEntry, "id">
+  | Omit<VmMasterExcelImportExecutionLogEntry, "id">;
 
 export type VmMasterExecutionLogListItem = {
   id: string;

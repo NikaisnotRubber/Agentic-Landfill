@@ -162,7 +162,7 @@ export async function syncHelpdeskVmMaster(
     }
   }
 
-  let fetchResult!: TicketFetchResult;
+  let fetchResult: TicketFetchResult | undefined;
   try {
     appendLog("INFO", `starting helpdesk VM sync count=${syncOptions.count}`);
     fetchResult = await fetchTickets(syncOptions);
@@ -175,9 +175,10 @@ export async function syncHelpdeskVmMaster(
     return withExecutionLog(result);
   }
 
-  if (!fetchResult.ok) {
-    appendLog("ERROR", fetchResult.error);
-    return withExecutionLog({ ok: false, error: fetchResult.error });
+  if (!fetchResult?.ok) {
+    const error = fetchResult?.error ?? "Helpdesk fetch failed";
+    appendLog("ERROR", error);
+    return withExecutionLog({ ok: false, error });
   }
 
   summary.fetchedTicketCount = fetchResult.tickets.length;

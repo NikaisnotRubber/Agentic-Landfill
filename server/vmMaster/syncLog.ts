@@ -1,6 +1,10 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { HelpdeskVmSyncLogEntry, HelpdeskVmSyncLogListItem } from "./types";
+import type {
+  HelpdeskVmSyncLogEntry,
+  HelpdeskVmSyncLogListItem,
+  VmMasterExecutionLogInput,
+} from "./types";
 
 export const DEFAULT_HELPDESK_VM_SYNC_LOG_DIR = "logs";
 
@@ -51,12 +55,18 @@ function getLogPath(id: string, options: SyncLogOptions): string {
   return path.join(getLogDir(options), `${id}.json`);
 }
 
+function normalizeLogKind(kind: unknown): HelpdeskVmSyncLogEntry["kind"] {
+  return kind === "excel-import" || kind === "helpdesk-sync" ? kind : "helpdesk-sync";
+}
+
 function normalizeLogEntry(raw: unknown): HelpdeskVmSyncLogEntry {
-  const entry = raw as HelpdeskVmSyncLogEntry & { kind?: HelpdeskVmSyncLogEntry["kind"] };
+  const entry = raw as Partial<HelpdeskVmSyncLogEntry> & Record<string, unknown>;
   return {
     ...entry,
-    kind: entry.kind ?? "helpdesk-sync",
-  };
+    kind: normalizeLogKind(entry.kind),
+    warnings: Array.isArray(entry.warnings) ? entry.warnings : [],
+    logs: Array.isArray(entry.logs) ? entry.logs : [],
+  } as HelpdeskVmSyncLogEntry;
 }
 
 function toListItem(entry: HelpdeskVmSyncLogEntry, logPath: string): HelpdeskVmSyncLogListItem {
@@ -73,13 +83,13 @@ function toListItem(entry: HelpdeskVmSyncLogEntry, logPath: string): HelpdeskVmS
 }
 
 export async function writeHelpdeskVmSyncLog(
-  entry: Omit<HelpdeskVmSyncLogEntry, "id">,
+  entry: VmMasterExecutionLogInput,
   options: SyncLogOptions = {},
 ): Promise<WriteSyncLogResult> {
   const id = createLogId();
   const logDir = getLogDir(options);
   const logPath = path.join(logDir, `${id}.json`);
-  const payload: HelpdeskVmSyncLogEntry = { id, ...entry };
+  const payload = { id, ...entry } as HelpdeskVmSyncLogEntry;
 
   await mkdir(logDir, { recursive: true });
   await writeFile(logPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
