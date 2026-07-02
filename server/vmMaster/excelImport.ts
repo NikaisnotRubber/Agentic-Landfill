@@ -65,6 +65,10 @@ function toCellText(value: ExcelJS.CellValue): string {
     return toCellText(value.result as ExcelJS.CellValue);
   }
 
+  if ("formula" in value && typeof value.formula === "string") {
+    return value.formula.trim();
+  }
+
   if ("richText" in value && Array.isArray(value.richText)) {
     return value.richText
       .map((part) => (typeof part?.text === "string" ? part.text : ""))
@@ -179,7 +183,9 @@ export async function parseVmMasterExcelPreview({
   workbookBuffer: Buffer;
 }): Promise<VmMasterExcelPreview> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(workbookBuffer);
+  await workbook.xlsx.load(
+    workbookBuffer as unknown as Parameters<typeof workbook.xlsx.load>[0],
+  );
   let foundHeaders = false;
 
   for (const worksheet of workbook.worksheets) {

@@ -86,6 +86,25 @@ describe("VM Master Excel import preview", () => {
     });
   });
 
+  it("stringifies formula-only cells and still prefers formula results", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Import");
+    sheet.addRow(["AD Name", "Formula Only", "Formula Result"]);
+    sheet.addRow(["CHUNKAI.LIU"]);
+    sheet.getCell("B2").value = { formula: 'A2&"-VM"' };
+    sheet.getCell("C2").value = { formula: 'A2&"-IGNORED"', result: "TWPJDDP01" };
+
+    const preview = await parseVmMasterExcelPreview({
+      fileName: "vm-master.xlsx",
+      workbookBuffer: Buffer.from(await workbook.xlsx.writeBuffer()),
+    });
+
+    expect(preview.sampleRows[0]?.values).toMatchObject({
+      "Formula Only": 'A2&"-VM"',
+      "Formula Result": "TWPJDDP01",
+    });
+  });
+
   it("rejects duplicate target fields and missing AD_NAME", () => {
     expect(() =>
       validateVmMasterExcelMapping({
