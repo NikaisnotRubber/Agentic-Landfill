@@ -175,13 +175,14 @@
 | [mapping-export-schema.json](superpowers/fixtures/mapping-export-schema.json) | 甈?憟?嚗??典霈嚗?|
 # Helpdesk / VM Master Progress
 
-> **最後更新**: 2026-06-30
+> **最後更新**: 2026-07-02
 > **目前分支**: `feat/vm-master-cqrs-manual-edit`
-> **目前重點**: VM Master Preview manual edit CQRS command
+> **目前重點**: VM Master Excel import integrated into core workflow
 
 ## 餈凋誨蝝??
 | ?交? | 餈凋誨 | Deliverables |
 |------|------|--------------|
+| 2026-07-02 | VM Master Excel import | Added Excel upload preview/execute APIs, one-to-one mapping overlay, AD/DB enrichment import with manager VM inference, Excel execution logs with request summaries, and operator docs. |
 | 2026-06-29 | VM max online users schema | ??Added `vm_machines.max_online_users`; ??migrates existing VM Master DBs; ??exposes `maxOnlineUsers` in VM Master preview rows; ??covered with `tests/vmMasterSchema.test.ts`. |
 | 2026-06-29 | PoC architecture consolidation | ??Added shared CSV IO via `csv-parse`; ??restored `exceljs` as an explicit dependency; ??moved role inference into `platform/mapping`; ??consolidated client JSON requests and VM Master async state; ??removed obsolete tests for deleted legacy helper modules; ??fixed DDP enriched AD processing and platform ticket sync summary; ??`pnpm build` and `pnpm test` pass. |
 | 2026-06-29 | LDAP Big5 parser regression fix | ??Decoded LDAP `cn` buffers with Big5/CP950 fallback; ??shared AD token cleanup across display names, requesters, and VM ticket descriptions; ??covered `UNO.CHEN ?單?, `UNO.CHEN2 ?單?, and `??鞊注 regression cases. |
@@ -190,6 +191,6 @@
 ## 撱箄降銝?甇?
 | ?芸?蝝?| 撱箄降 |
 |--------|------|
-| ✅ | Continue feature work from the consolidated VM Master + platform mapping surface. |
-| 🟡 | Review VM Master manual edit workflow with operators before adding row create/delete or MQ publishing. |
+| ✅ | Validate VM Master Excel import with operators and unblock sandbox/Vite spawn verification. |
+| 🟡 | Review VM Master manual edit and Excel import workflows before adding row create/delete or MQ publishing. |
 | ? | If Excel/SharePoint legacy workflows are needed again, reintroduce them as platform-level public modules with tests, not as scattered `server/excel` / `server/sharepoint` helpers. |

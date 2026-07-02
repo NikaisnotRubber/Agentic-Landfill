@@ -3,6 +3,9 @@ import type {
   HelpdeskVmSyncLogListResult,
   HelpdeskVmSyncOptions,
   HelpdeskVmSyncResult,
+  VmMasterExcelImportExecuteResult,
+  VmMasterExcelImportMapping,
+  VmMasterExcelPreviewResult,
   VmMasterManualEditCommand,
   VmMasterManualEditCommandResult,
   VmMasterPreviewResult,
@@ -52,5 +55,28 @@ export async function syncHelpdeskVmMaster(
     "/api/vm-master/sync-helpdesk",
     { method: "POST", body: options },
     "Helpdesk sync request",
+  );
+}
+
+export async function previewVmMasterExcelImport(payload: {
+  fileName: string;
+  workbookBase64: string;
+}): Promise<VmMasterExcelPreviewResult> {
+  return requestJson<VmMasterExcelPreviewResult>(
+    "/api/vm-master/import-excel/preview",
+    { method: "POST", body: payload },
+    "VM Master Excel import preview",
+  );
+}
+
+export async function executeVmMasterExcelImport(payload: {
+  fileName: string;
+  workbookBase64: string;
+  mapping: VmMasterExcelImportMapping;
+}): Promise<VmMasterExcelImportExecuteResult> {
+  return requestJson<VmMasterExcelImportExecuteResult>(
+    "/api/vm-master/import-excel/execute",
+    { method: "POST", body: payload },
+    "VM Master Excel import",
   );
 }

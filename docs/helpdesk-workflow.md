@@ -57,6 +57,15 @@ This keeps the login automation compatible with the Windows DOM observed by Play
 - `CHN_NAME` stores only the Chinese name; if no Chinese name exists, it falls back to the English name.
 - `REPORT_TO` stores the manager account when LDAP resolves it; fallback display-name parsing keeps only the English portion.
 
+### VM Master Excel import
+
+- Use **Import Excel** on the VM Master Preview page.
+- Upload a `.xlsx` workbook. The first non-empty worksheet is parsed.
+- Confirm column mapping in the overlay card. Matching Excel/DB field names are mapped by default.
+- Mapping is one-to-one; a DB field already selected in one row is disabled for other Excel columns.
+- Import uses each Excel row as input, enriches with AD and existing VM Master DB data, then infers missing VM assignments from the imported user's manager assignments.
+- Successful rows are written to SQLite. Failed rows are skipped and recorded in VM Master execution history.
+
 ### VM Master Preview manual edit
 
 - The VM Master Preview page is query-first: `GET /api/vm-master/preview` only reads the SQLite preview projection.

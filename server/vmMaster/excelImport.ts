@@ -419,7 +419,7 @@ function buildUserInput(input: {
   adName: string;
   values: Record<string, string>;
   mapping: VmMasterExcelImportMapping;
-  user: NonNullable<Awaited<ReturnType<AdLookupClient["lookupUser"]>>>;
+  user: Awaited<ReturnType<AdLookupClient["lookupUser"]>>;
   existing: ReturnType<typeof findVmUserForImport>;
   reportTo: string;
 }): { userInput: VmUserSyncInput; usedDbFallback: boolean } {
@@ -441,16 +441,16 @@ function buildUserInput(input: {
     adName: input.adName,
     chnName: chooseWithDb(
       fieldValue(input.values, input.mapping, "CHN_NAME"),
-      resolveAdChineseName(input.user.displayName),
+      resolveAdChineseName(input.user?.displayName ?? ""),
       input.existing?.chnName,
     ),
     emailAddress: chooseWithDb(
       fieldValue(input.values, input.mapping, "EMAIL_ADDRESS"),
-      input.user.mail,
+      input.user?.mail ?? "",
       input.existing?.emailAddress,
     ),
-    bg: chooseWithDb(fieldValue(input.values, input.mapping, "BG"), input.user.bg, input.existing?.bg),
-    bu: chooseWithDb(fieldValue(input.values, input.mapping, "BU"), input.user.bu, input.existing?.bu),
+    bg: chooseWithDb(fieldValue(input.values, input.mapping, "BG"), input.user?.bg ?? "", input.existing?.bg),
+    bu: chooseWithDb(fieldValue(input.values, input.mapping, "BU"), input.user?.bu ?? "", input.existing?.bu),
     userRole: chooseWithDb(
       fieldValue(input.values, input.mapping, "USER_ROLE"),
       "",
@@ -458,7 +458,7 @@ function buildUserInput(input: {
     ),
     userDept: chooseWithDb(
       fieldValue(input.values, input.mapping, "USER_DEPT"),
-      input.user.department,
+      input.user?.department ?? "",
       input.existing?.userDept,
     ),
     reportTo: input.reportTo,
@@ -483,6 +483,57 @@ function buildExplicitAssignment(
     groupName: chooseValue(fieldValue(values, mapping, "GROUP_NAME"), defaults?.groupName),
     zenteraRole: chooseValue(fieldValue(values, mapping, "ZENTERA_ROLE"), defaults?.zenteraRole),
   };
+}
+
+function parseMaxOnlineUsers(value: string): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error("MAX_ONLINE_USERS must be a non-negative integer");
+  }
+  return parsed;
+}
+
+function applyUserCurrentOverrides(
+  database: VmMasterDatabase,
+  adName: string,
+  values: Record<string, string>,
+  mapping: VmMasterExcelImportMapping,
+): void {
+  const buCurr = fieldValue(values, mapping, "BU_CURR");
+  const bgCurr = fieldValue(values, mapping, "BG_CURR");
+  if (!buCurr && !bgCurr) {
+    return;
+  }
+
+  database
+    .prepare(
+      `UPDATE vm_users
+       SET bu_curr = CASE WHEN ? THEN ? ELSE bu_curr END,
+           bg_curr = CASE WHEN ? THEN ? ELSE bg_curr END,
+           updated_at = datetime('now')
+       WHERE ad_name = ?`,
+    )
+    .run(Boolean(buCurr) ? 1 : 0, buCurr, Boolean(bgCurr) ? 1 : 0, bgCurr, adName);
+}
+
+function applyMachineMaxOnlineUsers(
+  database: VmMasterDatabase,
+  vmName: string,
+  values: Record<string, string>,
+  mapping: VmMasterExcelImportMapping,
+): void {
+  const maxOnlineUsers = parseMaxOnlineUsers(fieldValue(values, mapping, "MAX_ONLINE_USERS"));
+  if (maxOnlineUsers === undefined) {
+    return;
+  }
+
+  database
+    .prepare("UPDATE vm_machines SET max_online_users = ?, updated_at = datetime('now') WHERE vm_name = ?")
+    .run(maxOnlineUsers, vmName);
 }
 
 export async function executeVmMasterExcelImport(
@@ -567,7 +618,15 @@ export async function executeVmMasterExcelImport(
     return { ok: false, error: message, logId: logResult.id, logPath: logResult.logPath };
   }
 
-  const lookupClient = deps.createLookupClient();
+  let lookupClient: AdLookupClient;
+  try {
+    lookupClient = deps.createLookupClient();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AD lookup client creation failed";
+    appendLog("ERROR", message);
+    const logResult = await writeLog(false, message);
+    return { ok: false, error: message, logId: logResult.id, logPath: logResult.logPath };
+  }
   try {
     appendLog("INFO", `starting VM Master Excel import rows=${worksheet.rows.length}`);
 
@@ -587,11 +646,11 @@ export async function executeVmMasterExcelImport(
         continue;
       }
 
-      let user: Awaited<ReturnType<AdLookupClient["lookupUser"]>>;
+      const existing = findVmUserForImport(deps.database, adName);
+      let user: Awaited<ReturnType<AdLookupClient["lookupUser"]>> = null;
       try {
         user = await lookupClient.lookupUser(adName);
       } catch (error) {
-        summary.failedRowCount += 1;
         appendWarning(
           createWarning({
             rowNumber: row.rowNumber,
@@ -602,11 +661,13 @@ export async function executeVmMasterExcelImport(
             detail: error instanceof Error ? error.message : String(error),
           }),
         );
-        continue;
+        if (!existing) {
+          summary.failedRowCount += 1;
+          continue;
+        }
       }
 
       if (!user) {
-        summary.failedRowCount += 1;
         appendWarning(
           createWarning({
             rowNumber: row.rowNumber,
@@ -616,11 +677,13 @@ export async function executeVmMasterExcelImport(
             adName,
           }),
         );
-        continue;
+        if (!existing) {
+          summary.failedRowCount += 1;
+          continue;
+        }
+      } else {
+        summary.adEnrichedCount += 1;
       }
-
-      summary.adEnrichedCount += 1;
-      const existing = findVmUserForImport(deps.database, adName);
       const reportTo = await resolveReportTo({
         values: row.values,
         mapping,
@@ -655,10 +718,12 @@ export async function executeVmMasterExcelImport(
       deps.database.exec("BEGIN");
       try {
         upsertVmUserForSync(deps.database, userInput);
+        applyUserCurrentOverrides(deps.database, adName, row.values, mapping);
 
         const explicitAssignment = buildExplicitAssignment(deps.database, row.values, mapping);
         if (explicitAssignment) {
           replaceUserVmAssignments(deps.database, adName, [explicitAssignment]);
+          applyMachineMaxOnlineUsers(deps.database, explicitAssignment.vmName, row.values, mapping);
           summary.explicitAssignmentCount += 1;
           summary.importedRowCount += 1;
           deps.database.exec("COMMIT");
@@ -679,7 +744,7 @@ export async function executeVmMasterExcelImport(
               detail: `REPORT_TO=${reportTo}`,
             }),
           );
-          deps.database.exec("COMMIT");
+          deps.database.exec("ROLLBACK");
           continue;
         }
 
@@ -696,7 +761,7 @@ export async function executeVmMasterExcelImport(
               detail: `managerAdName=${managerAdName}`,
             }),
           );
-          deps.database.exec("COMMIT");
+          deps.database.exec("ROLLBACK");
           continue;
         }
 

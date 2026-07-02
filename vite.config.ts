@@ -9,6 +9,10 @@ import { readBody, sendJson } from "./server/http";
 import { readSampleTickets } from "./server/sampleTickets";
 import type { TicketFetchFailure } from "./server/types";
 import { createVmMasterManualEditCommandHandler } from "./server/vmMaster/manualEditRoute";
+import {
+  createVmMasterExcelImportExecuteHandler,
+  createVmMasterExcelImportPreviewHandler,
+} from "./server/vmMaster/excelImportRoute";
 import { createVmMasterPreviewHandler } from "./server/vmMaster/routes";
 import { createVmMasterSyncLogHandler } from "./server/vmMaster/syncLogRoute";
 import { createVmMasterSyncHelpdeskHandler } from "./server/vmMaster/syncRoute";
@@ -31,6 +35,14 @@ export default defineConfig({
         server.middlewares.use(
           "/api/vm-master/sync-helpdesk",
           createVmMasterSyncHelpdeskHandler(),
+        );
+        server.middlewares.use(
+          "/api/vm-master/import-excel/preview",
+          createVmMasterExcelImportPreviewHandler(),
+        );
+        server.middlewares.use(
+          "/api/vm-master/import-excel/execute",
+          createVmMasterExcelImportExecuteHandler(),
         );
         server.middlewares.use("/api/vm-master/sync-logs", createVmMasterSyncLogHandler());
 

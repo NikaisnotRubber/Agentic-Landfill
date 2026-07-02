@@ -269,4 +269,140 @@ describe("executeVmMasterExcelImport", () => {
       error: "VM Master Excel import requires at least one data row",
     });
   });
+  it("rolls back user data when VM inference fails", async () => {
+    const db = seedDb();
+    const buffer = await workbookBuffer(
+      ["AD_NAME", "REPORT_TO"],
+      [["CHUNKAI.LIU", "UNKNOWN.MANAGER"]],
+    );
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: { AD_NAME: "AD_NAME", REPORT_TO: "REPORT_TO" },
+      },
+      {
+        database: db,
+        createLookupClient,
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(
+      db.prepare("SELECT ad_name FROM vm_users WHERE ad_name = ?").get("CHUNKAI.LIU"),
+    ).toBeUndefined();
+  });
+
+  it("uses existing DB user data when AD lookup misses", async () => {
+    const db = seedDb();
+    db.prepare(
+      "INSERT INTO vm_users (ad_name, chn_name, email_address, bg, bu, user_role, user_dept, report_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run("EXISTING.USER", "Existing User", "existing.user@example.test", "DBG", "DDP", "Engineer", "DDP", "LEO.ZOU");
+    const buffer = await workbookBuffer(["AD_NAME"], [["EXISTING.USER"]]);
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: { AD_NAME: "AD_NAME" },
+      },
+      {
+        database: db,
+        createLookupClient,
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.summary).toMatchObject({
+      importedRowCount: 1,
+      failedRowCount: 0,
+      dbFilledCount: 1,
+      managerInferredAssignmentCount: 2,
+    });
+    expect(result.summary.warnings[0]).toMatchObject({
+      rowNumber: 2,
+      stage: "ad-enrichment",
+      code: "user-not-found",
+      adName: "EXISTING.USER",
+    });
+    expect(
+      db
+        .prepare("SELECT vm_name FROM vm_user_vm_assignments WHERE ad_name = ? ORDER BY vm_name")
+        .all("EXISTING.USER"),
+    ).toEqual([{ vm_name: "TWPJDDP01" }, { vm_name: "TWPJOPS01" }]);
+  });
+
+  it("persists mapped current BG/BU and max online users", async () => {
+    const db = seedDb();
+    const buffer = await workbookBuffer(
+      ["AD_NAME", "VM_NAME", "GROUP_NAME", "ZENTERA_ROLE", "MAX_ONLINE_USERS", "BU_CURR", "BG_CURR"],
+      [["EXPLICIT.USER", "TWPJMAX01", "MAX_GROUP", "MAX_ROLE", 7, "OPS-CURRENT", "DBG-CURRENT"]],
+    );
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: {
+          AD_NAME: "AD_NAME",
+          VM_NAME: "VM_NAME",
+          GROUP_NAME: "GROUP_NAME",
+          ZENTERA_ROLE: "ZENTERA_ROLE",
+          MAX_ONLINE_USERS: "MAX_ONLINE_USERS",
+          BU_CURR: "BU_CURR",
+          BG_CURR: "BG_CURR",
+        },
+      },
+      {
+        database: db,
+        createLookupClient,
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(
+      db.prepare("SELECT bu_curr, bg_curr FROM vm_users WHERE ad_name = ?").get("EXPLICIT.USER"),
+    ).toEqual({ bu_curr: "OPS-CURRENT", bg_curr: "DBG-CURRENT" });
+    expect(
+      db.prepare("SELECT max_online_users FROM vm_machines WHERE vm_name = ?").get("TWPJMAX01"),
+    ).toEqual({ max_online_users: 7 });
+  });
+
+  it("returns a failed execution record when lookup client creation fails", async () => {
+    const db = seedDb();
+    const buffer = await workbookBuffer(["AD_NAME"], [["CHUNKAI.LIU"]]);
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: { AD_NAME: "AD_NAME" },
+      },
+      {
+        database: db,
+        createLookupClient: () => {
+          throw new Error("AD client unavailable");
+        },
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    expect(result.error).toBe("AD client unavailable");
+    expect(result.logId).toBeTruthy();
+    const log = await readHelpdeskVmSyncLog(result.logId ?? "", { logDir: LOG_DIR });
+    expect(log).toMatchObject({ kind: "excel-import", ok: false, error: "AD client unavailable" });
+  });
 });
