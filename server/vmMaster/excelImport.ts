@@ -34,19 +34,28 @@ export const vmMasterExcelImportFields = [
   "REPORT_TO",
   "BU_CURR",
   "BG_CURR",
+  "WORK_SHEET",
 ] as const;
 
 export type VmMasterExcelImportField = (typeof vmMasterExcelImportFields)[number];
 export type VmMasterExcelImportMapping = Record<string, VmMasterExcelImportField>;
 
 export type VmMasterExcelPreviewSampleRow = {
+  worksheetName?: string;
   rowNumber: number;
   values: Record<string, string>;
+};
+
+export type VmMasterExcelPreviewWorksheet = {
+  worksheetName: string;
+  rowCount: number;
+  headers: string[];
 };
 
 export type VmMasterExcelPreview = {
   fileName: string;
   worksheetName: string;
+  worksheets: VmMasterExcelPreviewWorksheet[];
   headers: string[];
   rowCount: number;
   sampleRows: VmMasterExcelPreviewSampleRow[];
@@ -82,12 +91,14 @@ type HeaderColumn = {
 };
 
 type ParsedExcelRow = {
+  worksheetName: string;
   rowNumber: number;
   values: Record<string, string>;
 };
 
 type ParsedWorksheetRows = {
   worksheetName: string;
+  worksheets: VmMasterExcelPreviewWorksheet[];
   headers: string[];
   rows: ParsedExcelRow[];
 };
@@ -191,8 +202,19 @@ async function loadWorkbook(workbookBuffer: Buffer): Promise<ExcelJS.Workbook> {
   return workbook;
 }
 
+function addHeader(headers: string[], seenHeaders: Set<string>, header: string): void {
+  if (!seenHeaders.has(header)) {
+    seenHeaders.add(header);
+    headers.push(header);
+  }
+}
+
 async function readWorkbookRows(workbookBuffer: Buffer): Promise<ParsedWorksheetRows> {
   const workbook = await loadWorkbook(workbookBuffer);
+  const headers: string[] = [];
+  const seenHeaders = new Set<string>();
+  const rows: ParsedExcelRow[] = [];
+  const worksheets: VmMasterExcelPreviewWorksheet[] = [];
   let foundHeaders = false;
 
   for (const worksheet of workbook.worksheets) {
@@ -203,7 +225,8 @@ async function readWorkbookRows(workbookBuffer: Buffer): Promise<ParsedWorksheet
     }
 
     foundHeaders = true;
-    const rows: ParsedExcelRow[] = [];
+    const worksheetHeaders = headerColumns.map(({ header }) => header);
+    const worksheetRows: ParsedExcelRow[] = [];
 
     for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber += 1) {
       const row = worksheet.getRow(rowNumber);
@@ -212,18 +235,26 @@ async function readWorkbookRows(workbookBuffer: Buffer): Promise<ParsedWorksheet
         continue;
       }
 
-      rows.push({ rowNumber, values: readSampleValues(row, headerColumns) });
+      const values = readSampleValues(row, headerColumns);
+      values.WORK_SHEET = worksheet.name;
+      worksheetRows.push({ worksheetName: worksheet.name, rowNumber, values });
     }
 
-    if (rows.length === 0) {
+    if (worksheetRows.length === 0) {
       continue;
     }
 
-    return {
+    for (const header of worksheetHeaders) {
+      addHeader(headers, seenHeaders, header);
+    }
+    addHeader(headers, seenHeaders, "WORK_SHEET");
+
+    worksheets.push({
       worksheetName: worksheet.name,
-      headers: headerColumns.map(({ header }) => header),
-      rows,
-    };
+      rowCount: worksheetRows.length,
+      headers: worksheetHeaders.includes("WORK_SHEET") ? worksheetHeaders : [...worksheetHeaders, "WORK_SHEET"],
+    });
+    rows.push(...worksheetRows);
   }
 
   if (workbook.worksheets.length === 0) {
@@ -234,7 +265,16 @@ async function readWorkbookRows(workbookBuffer: Buffer): Promise<ParsedWorksheet
     throw new Error("VM Master Excel import requires header columns");
   }
 
-  throw new Error("VM Master Excel import requires at least one data row");
+  if (rows.length === 0) {
+    throw new Error("VM Master Excel import requires at least one data row");
+  }
+
+  return {
+    worksheetName: worksheets.map((worksheet) => worksheet.worksheetName).join(", "),
+    worksheets,
+    headers,
+    rows,
+  };
 }
 
 export function buildDefaultExcelImportMapping(
@@ -303,13 +343,20 @@ export async function parseVmMasterExcelPreview({
   workbookBuffer: Buffer;
 }): Promise<VmMasterExcelPreview> {
   const worksheet = await readWorkbookRows(workbookBuffer);
+  const includeWorksheetName = worksheet.worksheets.length > 1;
+  const sampleRows = worksheet.rows.slice(0, 5).map((row) => ({
+    ...(includeWorksheetName ? { worksheetName: row.worksheetName } : {}),
+    rowNumber: row.rowNumber,
+    values: row.values,
+  }));
 
   return {
     fileName,
     worksheetName: worksheet.worksheetName,
+    worksheets: worksheet.worksheets,
     headers: worksheet.headers,
     rowCount: worksheet.rows.length,
-    sampleRows: worksheet.rows.slice(0, 5),
+    sampleRows,
     importableFields: vmMasterExcelImportFields,
     defaultMapping: buildDefaultExcelImportMapping(worksheet.headers),
   };
@@ -371,6 +418,7 @@ function buildRequestSummary(input: {
     mappedColumnCount: Object.keys(input.mapping).length,
     mappedFields: input.mappedFields,
     rows: input.rows.slice(0, 5).map((row) => ({
+      worksheetName: row.worksheetName,
       rowNumber: row.rowNumber,
       adName: fieldValue(row.values, input.mapping, "AD_NAME"),
       vmName: fieldValue(row.values, input.mapping, "VM_NAME") || undefined,
@@ -392,6 +440,7 @@ async function resolveReportTo(input: {
   values: Record<string, string>;
   mapping: VmMasterExcelImportMapping;
   lookupClient: AdLookupClient;
+  lookupManagerAccount?: AdLookupClient["lookupManagerAccount"];
   user: Awaited<ReturnType<AdLookupClient["lookupUser"]>>;
   existingReportTo: string;
   onManagerLookupError?: (error: unknown) => void;
@@ -403,7 +452,8 @@ async function resolveReportTo(input: {
 
   if (input.user?.managerDn) {
     try {
-      const manager = await input.lookupClient.lookupManagerAccount(input.user.managerDn);
+      const lookupManagerAccount = input.lookupManagerAccount ?? input.lookupClient.lookupManagerAccount.bind(input.lookupClient);
+      const manager = await lookupManagerAccount(input.user.managerDn);
       if (manager?.adAccount) {
         return manager.adAccount;
       }
@@ -468,20 +518,22 @@ function buildUserInput(input: {
 }
 
 function buildExplicitAssignment(
-  database: VmMasterDatabase,
   values: Record<string, string>,
   mapping: VmMasterExcelImportMapping,
+  findDefaults: (vmName: string) => VmAssignmentInput | null,
 ): VmAssignmentInput | null {
   const vmName = fieldValue(values, mapping, "VM_NAME");
   if (!vmName) {
     return null;
   }
 
-  const defaults = findAssignmentDefaultsForVm(database, vmName);
+  const defaults = findDefaults(vmName);
+
   return {
     vmName,
     groupName: chooseValue(fieldValue(values, mapping, "GROUP_NAME"), defaults?.groupName),
     zenteraRole: chooseValue(fieldValue(values, mapping, "ZENTERA_ROLE"), defaults?.zenteraRole),
+    workSheet: fieldValue(values, mapping, "WORK_SHEET"),
   };
 }
 
@@ -543,7 +595,7 @@ export async function executeVmMasterExcelImport(
   const startedAt = deps.startedAt ?? new Date().toISOString();
   const logs: string[] = [];
   let mapping: VmMasterExcelImportMapping = {};
-  let worksheet: ParsedWorksheetRows = { worksheetName: "", headers: [], rows: [] };
+  let worksheet: ParsedWorksheetRows = { worksheetName: "", worksheets: [], headers: [], rows: [] };
   let mappedFields: string[] = [];
   let summary = createEmptySummary(0);
   let requestSummary: VmMasterExcelImportRequestSummary = buildRequestSummary({
@@ -627,6 +679,65 @@ export async function executeVmMasterExcelImport(
     const logResult = await writeLog(false, message);
     return { ok: false, error: message, logId: logResult.id, logPath: logResult.logPath };
   }
+  type UserLookupOutcome =
+    | { user: Awaited<ReturnType<AdLookupClient["lookupUser"]>>; error?: undefined }
+    | { user: null; error: unknown };
+  const existingUserCache = new Map<string, ReturnType<typeof findVmUserForImport>>();
+  const userLookupCache = new Map<string, Promise<UserLookupOutcome>>();
+  const managerAccountCache = new Map<string, ReturnType<AdLookupClient["lookupManagerAccount"]>>();
+  const managerAdNameCache = new Map<string, string>();
+  const managerAssignmentsCache = new Map<string, VmAssignmentInput[]>();
+  const assignmentDefaultsCache = new Map<string, VmAssignmentInput | null>();
+
+  function findExistingUser(adName: string): ReturnType<typeof findVmUserForImport> {
+    if (!existingUserCache.has(adName)) {
+      existingUserCache.set(adName, findVmUserForImport(deps.database, adName));
+    }
+    return existingUserCache.get(adName) ?? null;
+  }
+
+  function lookupUserCached(adName: string): Promise<UserLookupOutcome> {
+    if (!userLookupCache.has(adName)) {
+      userLookupCache.set(
+        adName,
+        lookupClient.lookupUser(adName).then(
+          (user) => ({ user }),
+          (error: unknown) => ({ user: null, error }),
+        ),
+      );
+    }
+    return userLookupCache.get(adName) as Promise<UserLookupOutcome>;
+  }
+
+  function lookupManagerAccountCached(managerDn: string): ReturnType<AdLookupClient["lookupManagerAccount"]> {
+    if (!managerAccountCache.has(managerDn)) {
+      managerAccountCache.set(managerDn, lookupClient.lookupManagerAccount(managerDn));
+    }
+    return managerAccountCache.get(managerDn) as ReturnType<AdLookupClient["lookupManagerAccount"]>;
+  }
+
+  function findManagerAdNameCached(reportTo: string): string {
+    const key = reportTo.trim();
+    if (!managerAdNameCache.has(key)) {
+      managerAdNameCache.set(key, findManagerAdName(deps.database, key));
+    }
+    return managerAdNameCache.get(key) ?? "";
+  }
+
+  function findManagerAssignmentsCached(managerAdName: string): VmAssignmentInput[] {
+    if (!managerAssignmentsCache.has(managerAdName)) {
+      managerAssignmentsCache.set(managerAdName, findManagerAssignments(deps.database, managerAdName));
+    }
+    return managerAssignmentsCache.get(managerAdName) ?? [];
+  }
+
+  function findAssignmentDefaultsCached(vmName: string): VmAssignmentInput | null {
+    if (!assignmentDefaultsCache.has(vmName)) {
+      assignmentDefaultsCache.set(vmName, findAssignmentDefaultsForVm(deps.database, vmName));
+    }
+    return assignmentDefaultsCache.get(vmName) ?? null;
+  }
+
   try {
     appendLog("INFO", `starting VM Master Excel import rows=${worksheet.rows.length}`);
 
@@ -646,11 +757,10 @@ export async function executeVmMasterExcelImport(
         continue;
       }
 
-      const existing = findVmUserForImport(deps.database, adName);
+      const existing = findExistingUser(adName);
+      const userLookup = await lookupUserCached(adName);
       let user: Awaited<ReturnType<AdLookupClient["lookupUser"]>> = null;
-      try {
-        user = await lookupClient.lookupUser(adName);
-      } catch (error) {
+      if ("error" in userLookup) {
         appendWarning(
           createWarning({
             rowNumber: row.rowNumber,
@@ -658,13 +768,15 @@ export async function executeVmMasterExcelImport(
             code: "lookup-failed",
             message: `AD lookup failed for ${adName}`,
             adName,
-            detail: error instanceof Error ? error.message : String(error),
+            detail: userLookup.error instanceof Error ? userLookup.error.message : String(userLookup.error),
           }),
         );
         if (!existing) {
           summary.failedRowCount += 1;
           continue;
         }
+      } else {
+        user = userLookup.user;
       }
 
       if (!user) {
@@ -688,6 +800,7 @@ export async function executeVmMasterExcelImport(
         values: row.values,
         mapping,
         lookupClient,
+        lookupManagerAccount: lookupManagerAccountCached,
         user,
         existingReportTo: existing?.reportTo ?? "",
         onManagerLookupError: (error) => {
@@ -720,7 +833,7 @@ export async function executeVmMasterExcelImport(
         upsertVmUserForSync(deps.database, userInput);
         applyUserCurrentOverrides(deps.database, adName, row.values, mapping);
 
-        const explicitAssignment = buildExplicitAssignment(deps.database, row.values, mapping);
+        const explicitAssignment = buildExplicitAssignment(row.values, mapping, findAssignmentDefaultsCached);
         if (explicitAssignment) {
           replaceUserVmAssignments(deps.database, adName, [explicitAssignment]);
           applyMachineMaxOnlineUsers(deps.database, explicitAssignment.vmName, row.values, mapping);
@@ -731,7 +844,7 @@ export async function executeVmMasterExcelImport(
           continue;
         }
 
-        const managerAdName = findManagerAdName(deps.database, reportTo);
+        const managerAdName = findManagerAdNameCached(reportTo);
         if (!managerAdName) {
           summary.failedRowCount += 1;
           appendWarning(
@@ -748,7 +861,11 @@ export async function executeVmMasterExcelImport(
           continue;
         }
 
-        const managerAssignments = findManagerAssignments(deps.database, managerAdName);
+        const workSheet = fieldValue(row.values, mapping, "WORK_SHEET");
+        const managerAssignments = findManagerAssignmentsCached(managerAdName).map((assignment) => ({
+          ...assignment,
+          workSheet,
+        }));
         if (managerAssignments.length === 0) {
           summary.failedRowCount += 1;
           appendWarning(

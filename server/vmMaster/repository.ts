@@ -41,6 +41,7 @@ type VmMasterJoinedRow = {
   vm_name: string;
   max_online_users: number | null;
   zentera_role: string;
+  work_sheet: string;
 };
 
 function resolveCurrentPair(existingValue: string, existingCurrent: string, incoming: string) {
@@ -75,6 +76,7 @@ function mapJoinedRow(row: VmMasterJoinedRow): VmMasterPreviewRow {
     vmName: row.vm_name,
     maxOnlineUsers: row.max_online_users,
     zenteraRole: row.zentera_role,
+    workSheet: row.work_sheet,
   };
 }
 
@@ -140,6 +142,7 @@ function normalizeManualEditRow(row: unknown): VmMasterPreviewRow {
     vmName: requireString(record.vmName, "vmName"),
     maxOnlineUsers: normalizeMaxOnlineUsers(record.maxOnlineUsers),
     zenteraRole: requireString(record.zenteraRole, "zenteraRole"),
+    workSheet: typeof record.workSheet === "string" ? record.workSheet.trim() : "",
   };
 }
 
@@ -215,7 +218,8 @@ function loadPreviewRow(
         assignments.group_name,
         machines.vm_name,
         machines.max_online_users,
-        assignments.zentera_role
+        assignments.zentera_role,
+        assignments.work_sheet
       FROM vm_user_vm_assignments assignments
       INNER JOIN vm_users users ON users.ad_name = assignments.ad_name
       INNER JOIN vm_machines machines ON machines.vm_name = assignments.vm_name
@@ -493,17 +497,24 @@ export function replaceUserVmAssignments(
     ON CONFLICT(vm_name) DO UPDATE SET updated_at = datetime('now')
   `);
   const insertAssignment = database.prepare(`
-    INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role, work_sheet)
+    VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(ad_name, vm_name) DO UPDATE SET
       group_name = excluded.group_name,
       zentera_role = excluded.zentera_role,
+      work_sheet = excluded.work_sheet,
       updated_at = datetime('now')
   `);
 
   for (const assignment of assignments) {
     insertMachine.run(assignment.vmName);
-    insertAssignment.run(adName, assignment.vmName, assignment.groupName, assignment.zenteraRole);
+    insertAssignment.run(
+      adName,
+      assignment.vmName,
+      assignment.groupName,
+      assignment.zenteraRole,
+      assignment.workSheet ?? "",
+    );
   }
 
   return {

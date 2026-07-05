@@ -13,6 +13,7 @@ export type VmMasterPreviewRow = {
   vmName: string;
   maxOnlineUsers: number | null;
   zenteraRole: string;
+  workSheet?: string;
 };
 
 export type VmMasterBgGroup = {
@@ -108,13 +109,21 @@ export type VmMasterExcelImportField =
   | "USER_DEPT"
   | "REPORT_TO"
   | "BU_CURR"
-  | "BG_CURR";
+  | "BG_CURR"
+  | "WORK_SHEET";
 
 export type VmMasterExcelImportMapping = Partial<Record<string, VmMasterExcelImportField>>;
 
 export type VmMasterExcelPreviewSampleRow = {
+  worksheetName?: string;
   rowNumber: number;
   values: Record<string, string>;
+};
+
+export type VmMasterExcelPreviewWorksheet = {
+  worksheetName: string;
+  rowCount: number;
+  headers: string[];
 };
 
 export type VmMasterExcelPreviewResult =
@@ -122,6 +131,7 @@ export type VmMasterExcelPreviewResult =
       ok: true;
       fileName: string;
       worksheetName: string;
+      worksheets: VmMasterExcelPreviewWorksheet[];
       headers: string[];
       rowCount: number;
       sampleRows: VmMasterExcelPreviewSampleRow[];
@@ -184,6 +194,7 @@ export type VmMasterExcelImportRequestSummary = {
   mappedColumnCount: number;
   mappedFields: string[];
   rows: Array<{
+    worksheetName?: string;
     rowNumber: number;
     adName: string;
     vmName?: string;

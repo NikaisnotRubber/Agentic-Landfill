@@ -33,6 +33,7 @@ export function normalizeVmMasterRecord(record: VmMasterCsvRecord): VmMasterAssi
     vmName: clean(record.VM_NAME),
     maxOnlineUsers: null,
     zenteraRole: clean(record.ZENTERA_ROLE),
+    workSheet: clean(record.WORK_SHEET),
     userDept: clean(record.USER_DEPT),
     reportTo: clean(record.REPORT_TO),
     buCurr: clean(record.BU_CURR),

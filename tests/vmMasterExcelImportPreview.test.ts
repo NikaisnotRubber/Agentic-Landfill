@@ -19,6 +19,23 @@ async function workbookBuffer(headers: string[], rows: unknown[][]): Promise<Buf
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function multiSheetWorkbookBuffer(
+  sheets: Array<{ name: string; headers: string[]; rows: unknown[][] }>,
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+
+  for (const input of sheets) {
+    const sheet = workbook.addWorksheet(input.name);
+    sheet.addRow(input.headers);
+
+    for (const row of input.rows) {
+      sheet.addRow(row);
+    }
+  }
+
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 describe("VM Master Excel import preview", () => {
   it("extracts headers, row count, samples, importable fields, and default mapping", async () => {
     const buffer = await workbookBuffer(
@@ -37,12 +54,13 @@ describe("VM Master Excel import preview", () => {
     expect(preview).toMatchObject({
       fileName: "vm-master.xlsx",
       worksheetName: "Import",
-      headers: ["AD Name", "VM_NAME", "Report To", "Ignored"],
+      headers: ["AD Name", "VM_NAME", "Report To", "Ignored", "WORK_SHEET"],
       rowCount: 2,
       defaultMapping: {
         "AD Name": "AD_NAME",
         VM_NAME: "VM_NAME",
         "Report To": "REPORT_TO",
+        WORK_SHEET: "WORK_SHEET",
       },
     });
     expect(preview.sampleRows).toEqual([
@@ -53,6 +71,7 @@ describe("VM Master Excel import preview", () => {
           VM_NAME: "TWPJDDP01",
           "Report To": "LEO.ZOU",
           Ignored: "x",
+          WORK_SHEET: "Import",
         },
       },
       {
@@ -62,10 +81,68 @@ describe("VM Master Excel import preview", () => {
           VM_NAME: "",
           "Report To": "MANAGER.AD",
           Ignored: "y",
+          WORK_SHEET: "Import",
         },
       },
     ]);
     expect(preview.importableFields).toContain("AD_NAME");
+  });
+
+  it("extracts rows from every worksheet and exposes worksheet names as a virtual column", async () => {
+    const buffer = await multiSheetWorkbookBuffer([
+      {
+        name: "DDP",
+        headers: ["AD_NAME", "VM_NAME"],
+        rows: [["CHUNKAI.LIU", "TWPJDDP01"]],
+      },
+      {
+        name: "OPS",
+        headers: ["AD_NAME", "GROUP_NAME"],
+        rows: [["SUNGCHAO.SC.YU", "OPS_USERS"]],
+      },
+    ]);
+
+    const preview = await parseVmMasterExcelPreview({
+      fileName: "vm-master.xlsx",
+      workbookBuffer: buffer,
+    });
+
+    expect(preview).toMatchObject({
+      worksheetName: "DDP, OPS",
+      worksheets: [
+        { worksheetName: "DDP", rowCount: 1 },
+        { worksheetName: "OPS", rowCount: 1 },
+      ],
+      headers: ["AD_NAME", "VM_NAME", "WORK_SHEET", "GROUP_NAME"],
+      rowCount: 2,
+      defaultMapping: {
+        AD_NAME: "AD_NAME",
+        VM_NAME: "VM_NAME",
+        GROUP_NAME: "GROUP_NAME",
+        WORK_SHEET: "WORK_SHEET",
+      },
+    });
+    expect(preview.sampleRows).toEqual([
+      {
+        worksheetName: "DDP",
+        rowNumber: 2,
+        values: {
+          AD_NAME: "CHUNKAI.LIU",
+          VM_NAME: "TWPJDDP01",
+          WORK_SHEET: "DDP",
+        },
+      },
+      {
+        worksheetName: "OPS",
+        rowNumber: 2,
+        values: {
+          AD_NAME: "SUNGCHAO.SC.YU",
+          GROUP_NAME: "OPS_USERS",
+          WORK_SHEET: "OPS",
+        },
+      },
+    ]);
+    expect(preview.importableFields).toContain("WORK_SHEET");
   });
 
   it("keeps sample values aligned when header columns are blank", async () => {
@@ -79,10 +156,11 @@ describe("VM Master Excel import preview", () => {
       workbookBuffer: buffer,
     });
 
-    expect(preview.headers).toEqual(["AD Name", "VM_NAME"]);
+    expect(preview.headers).toEqual(["AD Name", "VM_NAME", "WORK_SHEET"]);
     expect(preview.sampleRows[0]?.values).toEqual({
       "AD Name": "CHUNKAI.LIU",
       VM_NAME: "TWPJDDP01",
+      WORK_SHEET: "Import",
     });
   });
 
@@ -140,6 +218,7 @@ describe("VM Master Excel import preview", () => {
         values: {
           "AD Name": "CHUNKAI.LIU",
           VM_NAME: "",
+          WORK_SHEET: "Import",
         },
       },
     ]);

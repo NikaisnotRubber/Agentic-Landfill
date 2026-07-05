@@ -31,11 +31,12 @@ describe("VM Master Excel import routes", () => {
       previewWorkbook: vi.fn().mockResolvedValue({
         fileName: "vm-master.xlsx",
         worksheetName: "Import",
-        headers: ["AD_NAME"],
+        worksheets: [{ worksheetName: "Import", rowCount: 1, headers: ["AD_NAME", "WORK_SHEET"] }],
+        headers: ["AD_NAME", "WORK_SHEET"],
         rowCount: 1,
         sampleRows: [],
-        importableFields: ["AD_NAME"],
-        defaultMapping: { AD_NAME: "AD_NAME" },
+        importableFields: ["AD_NAME", "WORK_SHEET"],
+        defaultMapping: { AD_NAME: "AD_NAME", WORK_SHEET: "WORK_SHEET" },
       }),
     });
     const response = createMockResponse();

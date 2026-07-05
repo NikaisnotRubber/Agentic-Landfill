@@ -60,11 +60,11 @@ This keeps the login automation compatible with the Windows DOM observed by Play
 ### VM Master Excel import
 
 - Use **Import Excel** on the VM Master Preview page.
-- Upload a `.xlsx` workbook. The first non-empty worksheet is parsed.
-- Confirm column mapping in the overlay card. Matching Excel/DB field names are mapped by default.
-- Mapping is one-to-one; a DB field already selected in one row is disabled for other Excel columns.
+- Upload a `.xlsx` workbook. Every worksheet with headers and data is parsed.
+- Confirm column mapping in the overlay card. Matching Excel/DB field names are mapped by default, including the virtual `WORK_SHEET` column generated from each row's worksheet name.
+- Mapping is one-to-one; a DB field already selected for one Excel column is disabled for other Excel columns.
 - Import uses each Excel row as input, enriches with AD and existing VM Master DB data, then infers missing VM assignments from the imported user's manager assignments.
-- Successful rows are written to SQLite. Failed rows are skipped and recorded in VM Master execution history.
+- Successful rows are written to SQLite. Failed rows are skipped and recorded in VM Master execution history; Excel request summaries include worksheet names for sampled rows.
 
 ### VM Master Preview manual edit
 

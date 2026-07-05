@@ -14,7 +14,7 @@ The import uses Excel rows as the source of requested work. It does not fetch ad
 - No new standalone import script for this flow.
 - No new package for multipart upload.
 - No server-side temporary workbook storage.
-- No sheet selection in the first iteration. The first non-empty worksheet is used and shown in the mapping UI.
+- No per-sheet mapping in this iteration. One workbook-level mapping applies to every parsed worksheet.
 - No full database replacement. This import upserts successful rows only.
 
 ## Existing Context
@@ -33,10 +33,10 @@ The current system already has:
 1. Operator clicks `Import Excel` in the VM Master Preview header.
 2. Browser opens a native file picker accepting `.xlsx`.
 3. The client reads the file as an `ArrayBuffer`, base64 encodes it, and posts it to a preview endpoint.
-4. The server parses the first non-empty worksheet and returns:
+4. The server parses every worksheet with headers and data, then returns:
    - file name
-   - worksheet name
-   - Excel headers
+   - worksheet names and row counts
+   - workbook-level Excel headers, including the virtual `WORK_SHEET` column
    - sample rows
    - importable DB fields
    - default mapping
@@ -68,16 +68,17 @@ The import maps Excel columns to the persistent VM Master model:
 - `REPORT_TO`
 - `BU_CURR`
 - `BG_CURR`
+- `WORK_SHEET`
 
 `AD_NAME` is required for a row to import. `VM_NAME`, `GROUP_NAME`, and `ZENTERA_ROLE` may be provided by Excel or inferred from the manager's DB assignments. If a row cannot produce at least one assignment after enrichment and inference, it is treated as failed and no partial row is written.
 
-`WORK_SHEET` is not imported because there is no current DB column for it.
+`WORK_SHEET` is a virtual Excel column generated from the worksheet name. When mapped, it is written to `vm_user_vm_assignments.work_sheet`; every row from the same worksheet shares the same value.
 
 ## Mapping Rules
 
 Header matching is normalized by trimming, uppercasing, and removing separators such as spaces, underscores, and hyphens. For example, `AD_NAME`, `AD Name`, and `adName` all match `AD_NAME`.
 
-Default mapping is generated only when a normalized Excel header matches exactly one importable field. Operators can change all defaults before execution.
+Default mapping is generated only when a normalized Excel header matches exactly one importable field. `WORK_SHEET` is generated for every parsed row and maps to `WORK_SHEET` by default. Operators can change all defaults before execution.
 
 The execute endpoint rejects duplicate target DB fields. The UI prevents duplicates by disabling already selected fields in other selects.
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applyVmMasterSchema, openVmMasterDatabase } from "../server/db/sqlite";
 
 describe("VM master schema", () => {
-  it("migrates VM machines with max online users and exposes it in preview", () => {
+  it("migrates VM machines and assignments and exposes them in preview", () => {
     const db = openVmMasterDatabase(":memory:");
 
     try {
@@ -45,6 +45,11 @@ describe("VM master schema", () => {
       }>;
       expect(columns.map((column) => column.name)).toContain("max_online_users");
 
+      const assignmentColumns = db.prepare("PRAGMA table_info(vm_user_vm_assignments)").all() as Array<{
+        name: string;
+      }>;
+      expect(assignmentColumns.map((column) => column.name)).toContain("work_sheet");
+
       db.prepare(
         `
           INSERT INTO vm_users (ad_name, chn_name, email_address, bg, bu)
@@ -57,15 +62,15 @@ describe("VM master schema", () => {
       );
       db.prepare(
         `
-          INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role)
-          VALUES ('LEO.ZOU', 'TWPJDDP01', 'DDP_USERS', 'DDP_USER')
+          INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role, work_sheet)
+          VALUES ('LEO.ZOU', 'TWPJDDP01', 'DDP_USERS', 'DDP_USER', 'Import')
         `,
       ).run();
 
       const preview = db.prepare("SELECT rows FROM vm_master_preview_by_bg").get() as {
         rows: string;
       };
-      expect(JSON.parse(preview.rows)[0]).toMatchObject({ maxOnlineUsers: 12 });
+      expect(JSON.parse(preview.rows)[0]).toMatchObject({ maxOnlineUsers: 12, workSheet: "Import" });
     } finally {
       db.close();
     }

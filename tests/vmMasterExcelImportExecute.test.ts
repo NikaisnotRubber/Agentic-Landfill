@@ -23,6 +23,20 @@ async function workbookBuffer(headers: string[], rows: unknown[][]): Promise<Buf
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+async function multiSheetWorkbookBuffer(
+  sheets: Array<{ name: string; headers: string[]; rows: unknown[][] }>,
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  for (const input of sheets) {
+    const sheet = workbook.addWorksheet(input.name);
+    sheet.addRow(input.headers);
+    for (const row of input.rows) {
+      sheet.addRow(row);
+    }
+  }
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 function createLookupClient(): AdLookupClient {
   return {
     async lookupUser(account) {
@@ -149,6 +163,115 @@ describe("executeVmMasterExcelImport", () => {
       mappedColumnCount: 1,
       mappedFields: ["AD_NAME"],
     });
+  });
+
+  it("imports every worksheet and persists mapped worksheet names", async () => {
+    const db = seedDb();
+    const buffer = await multiSheetWorkbookBuffer([
+      {
+        name: "DDP",
+        headers: ["AD_NAME", "VM_NAME", "GROUP_NAME", "ZENTERA_ROLE"],
+        rows: [["EXPLICIT.USER", "TWPJNEW01", "DDP_GROUP", "DDP_ROLE"]],
+      },
+      {
+        name: "OPS",
+        headers: ["AD_NAME", "VM_NAME"],
+        rows: [["CHUNKAI.LIU", "TWPJOPS02"]],
+      },
+    ]);
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: {
+          AD_NAME: "AD_NAME",
+          VM_NAME: "VM_NAME",
+          GROUP_NAME: "GROUP_NAME",
+          ZENTERA_ROLE: "ZENTERA_ROLE",
+          WORK_SHEET: "WORK_SHEET",
+        },
+      },
+      {
+        database: db,
+        createLookupClient,
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.summary).toMatchObject({
+      rowCount: 2,
+      importedRowCount: 2,
+      explicitAssignmentCount: 2,
+    });
+    expect(
+      db
+        .prepare(
+          `SELECT ad_name, vm_name, work_sheet
+           FROM vm_user_vm_assignments
+           WHERE ad_name IN ('CHUNKAI.LIU', 'EXPLICIT.USER')
+           ORDER BY ad_name`,
+        )
+        .all(),
+    ).toEqual([
+      { ad_name: "CHUNKAI.LIU", vm_name: "TWPJOPS02", work_sheet: "OPS" },
+      { ad_name: "EXPLICIT.USER", vm_name: "TWPJNEW01", work_sheet: "DDP" },
+    ]);
+
+    const log = await readHelpdeskVmSyncLog(result.summary.logId ?? "", { logDir: LOG_DIR });
+    expect(log.requestSummary).toMatchObject({
+      worksheetName: "DDP, OPS",
+      excelRowCount: 2,
+      mappedFields: expect.arrayContaining(["WORK_SHEET"]),
+      rows: [
+        { worksheetName: "DDP", rowNumber: 2, adName: "EXPLICIT.USER", vmName: "TWPJNEW01" },
+        { worksheetName: "OPS", rowNumber: 2, adName: "CHUNKAI.LIU", vmName: "TWPJOPS02" },
+      ],
+    });
+  });
+
+  it("reuses AD and manager lookups for repeated workbook rows", async () => {
+    const db = seedDb();
+    const buffer = await workbookBuffer(["AD_NAME"], [["CHUNKAI.LIU"], ["CHUNKAI.LIU"]]);
+    let userLookupCount = 0;
+    let managerLookupCount = 0;
+
+    const createCountingLookupClient = (): AdLookupClient => {
+      const base = createLookupClient();
+      return {
+        async lookupUser(account) {
+          userLookupCount += 1;
+          return base.lookupUser(account);
+        },
+        async lookupManagerAccount(managerDn) {
+          managerLookupCount += 1;
+          return base.lookupManagerAccount(managerDn);
+        },
+        async close() {},
+      };
+    };
+
+    const result = await executeVmMasterExcelImport(
+      {
+        fileName: "vm-master.xlsx",
+        workbookBuffer: buffer,
+        mapping: { AD_NAME: "AD_NAME" },
+      },
+      {
+        database: db,
+        createLookupClient: createCountingLookupClient,
+        startedAt: "2026-07-01T01:00:00.000Z",
+        logDir: LOG_DIR,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(userLookupCount).toBe(1);
+    expect(managerLookupCount).toBe(1);
   });
 
   it("uses explicit VM_NAME and continues after failed rows", async () => {

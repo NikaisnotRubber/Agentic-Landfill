@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS vm_user_vm_assignments (
   vm_name TEXT NOT NULL REFERENCES vm_machines(vm_name) ON DELETE CASCADE,
   group_name TEXT NOT NULL DEFAULT '',
   zentera_role TEXT NOT NULL DEFAULT '',
+  work_sheet TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (ad_name, vm_name)
@@ -78,7 +79,8 @@ SELECT
       'groupName', assignments.group_name,
       'vmName', machines.vm_name,
       'maxOnlineUsers', machines.max_online_users,
-      'zenteraRole', assignments.zentera_role
+      'zenteraRole', assignments.zentera_role,
+      'workSheet', assignments.work_sheet
     )
   ) AS rows
 FROM vm_user_vm_assignments assignments

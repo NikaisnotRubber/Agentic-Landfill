@@ -68,6 +68,21 @@ const historyHealthText = computed(() => {
 
 const selectedLogText = computed(() => selectedLog.value?.logs.join("\n") ?? "");
 
+const excelWorksheetLabel = computed(() => {
+  const preview = excelPreview.value;
+  if (!preview) {
+    return "";
+  }
+  if (preview.worksheets.length <= 1) {
+    return preview.worksheetName;
+  }
+  return (
+    String(preview.worksheets.length) +
+    " sheets: " +
+    preview.worksheets.map((worksheet) => worksheet.worksheetName).join(", ")
+  );
+});
+
 function formatExecutionTime(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
@@ -412,7 +427,7 @@ async function copyLogs(): Promise<void> {
           <div>
             <h2>Map Excel columns</h2>
             <p class="subtle">
-              {{ excelPreview.fileName }} / {{ excelPreview.worksheetName }} /
+              {{ excelPreview.fileName }} / {{ excelWorksheetLabel }} /
               {{ excelPreview.rowCount }} rows
             </p>
           </div>

@@ -177,11 +177,12 @@
 
 > **最後更新**: 2026-07-02
 > **目前分支**: `feat/vm-master-cqrs-manual-edit`
-> **目前重點**: VM Master Excel import integrated into core workflow
+> **目前重點**: VM Master Excel import supports multi-sheet WORK_SHEET mapping
 
 ## 餈凋誨蝝??
 | ?交? | 餈凋誨 | Deliverables |
 |------|------|--------------|
+| 2026-07-02 | VM Master Excel import multi-sheet | Added all-worksheet parsing, virtual `WORK_SHEET` mapping, persisted assignment `work_sheet`, preview table display, and execution-scoped AD/DB lookup caches. |
 | 2026-07-02 | VM Master Excel import | Added Excel upload preview/execute APIs, one-to-one mapping overlay, AD/DB enrichment import with manager VM inference, Excel execution logs with request summaries, and operator docs. |
 | 2026-06-29 | VM max online users schema | ??Added `vm_machines.max_online_users`; ??migrates existing VM Master DBs; ??exposes `maxOnlineUsers` in VM Master preview rows; ??covered with `tests/vmMasterSchema.test.ts`. |
 | 2026-06-29 | PoC architecture consolidation | ??Added shared CSV IO via `csv-parse`; ??restored `exceljs` as an explicit dependency; ??moved role inference into `platform/mapping`; ??consolidated client JSON requests and VM Master async state; ??removed obsolete tests for deleted legacy helper modules; ??fixed DDP enriched AD processing and platform ticket sync summary; ??`pnpm build` and `pnpm test` pass. |
@@ -191,6 +192,6 @@
 ## 撱箄降銝?甇?
 | ?芸?蝝?| 撱箄降 |
 |--------|------|
-| ✅ | Validate VM Master Excel import with operators and unblock sandbox/Vite spawn verification. |
+| ✅ | Validate VM Master multi-sheet Excel import with operators, including `WORK_SHEET` mapping and execution history summaries. |
 | 🟡 | Review VM Master manual edit and Excel import workflows before adding row create/delete or MQ publishing. |
 | ? | If Excel/SharePoint legacy workflows are needed again, reintroduce them as platform-level public modules with tests, not as scattered `server/excel` / `server/sharepoint` helpers. |

@@ -30,6 +30,7 @@ export type VmMasterAssignment = {
   vmName: string;
   maxOnlineUsers: number | null;
   zenteraRole: string;
+  workSheet?: string;
   userDept: string;
   reportTo: string;
   buCurr: string;
@@ -94,6 +95,7 @@ export type VmAssignmentInput = {
   vmName: string;
   groupName: string;
   zenteraRole: string;
+  workSheet?: string;
 };
 
 export type HelpdeskVmSyncOptions = {
@@ -158,6 +160,7 @@ export type VmMasterExcelImportRequestSummary = {
   mappedColumnCount: number;
   mappedFields: string[];
   rows: Array<{
+    worksheetName?: string;
     rowNumber: number;
     adName: string;
     vmName?: string;

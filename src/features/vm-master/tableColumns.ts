@@ -12,6 +12,7 @@ export function getVmMasterSearchText(row: VmMasterPreviewRow): string {
     row.userRole,
     row.groupName,
     row.zenteraRole,
+    row.workSheet ?? "",
     String(row.maxOnlineUsers ?? ""),
     row.userDept,
     row.reportTo,
@@ -69,6 +70,11 @@ export const vmMasterColumns: ColumnDef<VmMasterPreviewRow>[] = [
     id: "zenteraRole",
     accessorKey: "zenteraRole",
     header: "ZENTERA_ROLE",
+  },
+  {
+    id: "workSheet",
+    accessorKey: "workSheet",
+    header: "WORK_SHEET",
   },
   {
     id: "userDept",

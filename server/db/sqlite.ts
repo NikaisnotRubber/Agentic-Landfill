@@ -46,6 +46,7 @@ function ensureColumn(
 function migrateVmMasterAssignmentColumns(database: VmMasterDatabase): void {
   ensureColumn(database, "vm_user_vm_assignments", "group_name", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(database, "vm_user_vm_assignments", "zentera_role", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(database, "vm_user_vm_assignments", "work_sheet", "TEXT NOT NULL DEFAULT ''");
   ensureColumn(database, "vm_machines", "max_online_users", "INTEGER");
 
   const machineColumns = listColumnNames(database, "vm_machines");
@@ -92,7 +93,8 @@ function recreateVmMasterPreviewView(database: VmMasterDatabase): void {
           'groupName', assignments.group_name,
           'vmName', machines.vm_name,
           'maxOnlineUsers', machines.max_online_users,
-          'zenteraRole', assignments.zentera_role
+          'zenteraRole', assignments.zentera_role,
+          'workSheet', assignments.work_sheet
         )
       ) AS rows
     FROM vm_user_vm_assignments assignments

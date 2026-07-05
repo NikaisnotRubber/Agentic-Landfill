@@ -50,11 +50,12 @@ export function importVmMasterRows(database: VmMasterDatabase, rows: VmMasterAss
   `);
 
   const insertAssignment = database.prepare(`
-    INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO vm_user_vm_assignments (ad_name, vm_name, group_name, zentera_role, work_sheet)
+    VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(ad_name, vm_name) DO UPDATE SET
       group_name = excluded.group_name,
       zentera_role = excluded.zentera_role,
+      work_sheet = excluded.work_sheet,
       updated_at = datetime('now')
   `);
 
@@ -85,7 +86,7 @@ export function importVmMasterRows(database: VmMasterDatabase, rows: VmMasterAss
     }
 
     for (const row of rows) {
-      insertAssignment.run(row.adName, row.vmName, row.groupName, row.zenteraRole);
+      insertAssignment.run(row.adName, row.vmName, row.groupName, row.zenteraRole, row.workSheet ?? "");
     }
 
     database.exec("COMMIT");
